@@ -1,0 +1,32 @@
+openapi: 3.0.0
+paths:
+  /login:
+    post:
+      summary: authenticates a user
+      operationId: DirectoryController.post
+      description: Authenticates a user and returns a JWT token
+      responses:
+        '200':
+          description: user authenticated
+        '401':
+          description: user unauthorized
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginCredentials'
+        description: User credentials to authenticate
+components:
+  schemas:
+    LoginCredentials:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          example: bob
+        password:
+          type: string
+          example: secret

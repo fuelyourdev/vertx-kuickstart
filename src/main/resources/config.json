@@ -1,0 +1,11 @@
+{
+  "SERVICE_DB_HOST": "localhost",
+  "SERVICE_DB_PORT": 5432,
+  "SERVICE_DB_NAME": "exampledb",
+  "SERVICE_DB_USER": "example_sa",
+  "SERVICE_DB_PASSWORD": "example",
+
+  "JWT_PUB_KEY": "an example public key",
+  "JWT_PRIVATE_KEY": "super secret private key"
+}
+
