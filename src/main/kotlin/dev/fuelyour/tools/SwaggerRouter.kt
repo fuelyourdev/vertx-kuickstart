@@ -33,21 +33,21 @@ import kotlin.reflect.jvm.jvmErasure
 
 private typealias RequiredRoles = Map<String, List<String>>
 
+fun Router.route(swaggerFile: OpenAPI, controllerPackage: String) {
+  route()
+    .produces("application/json")
+    .handler(BodyHandler.create().setBodyLimit(5120000))
+    .handler(TimeoutHandler.create(30000))
+
+  SwaggerRouter.addRoutesFromSwaggerFile(this, swaggerFile, controllerPackage)
+}
+
 object SwaggerRouter : KoinComponent {
 
   private val jwtHelper: JWTHelper by inject()
 
-  fun route(router: Router, swaggerFile: OpenAPI, controllerPackage: String) {
-    router.route()
-      .produces("application/json")
-      .handler(BodyHandler.create().setBodyLimit(5120000))
-      .handler(TimeoutHandler.create(30000))
-
-    addRoutesFromSwaggerFile(router, swaggerFile, controllerPackage)
-  }
-
   @Suppress("UNCHECKED_CAST")
-  private fun addRoutesFromSwaggerFile(
+  fun addRoutesFromSwaggerFile(
     router: Router,
     swaggerFile: OpenAPI,
     controllerPackage: String

@@ -2,6 +2,7 @@ package dev.fuelyour.verticles
 
 import dev.fuelyour.tools.SwaggerMerger
 import dev.fuelyour.tools.SwaggerRouter
+import dev.fuelyour.tools.route
 import io.reactivex.Completable
 import io.vertx.core.http.HttpServerOptions
 import io.vertx.reactivex.core.AbstractVerticle
@@ -27,7 +28,7 @@ class HttpVerticle : AbstractVerticle() {
     val pkg = javaClass.`package`.name.substringBeforeLast('.') + ".controllers"
     val swaggerFile = SwaggerMerger.mergeAllInDirectory("swagger")
       ?: throw Exception("Unable to process Swagger file")
-    SwaggerRouter.route(apiRouter, swaggerFile, pkg)
+    apiRouter.route(swaggerFile, pkg)
   }
 
   private fun mountStaticRoutes(mainRouter: Router) {
