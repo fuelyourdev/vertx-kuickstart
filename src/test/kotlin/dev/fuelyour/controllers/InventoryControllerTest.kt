@@ -15,37 +15,41 @@ import java.util.concurrent.TimeUnit
 
 
 object InventoryControllerTest : Spek({
-    setup()
-    val vertx: Vertx by memoized()
-    val deployIds: MutableList<String> by memoized()
-    val webClient: WebClient by memoized()
+  setup()
+  val vertx: Vertx by memoized()
+  val deployIds: MutableList<String> by memoized()
+  val webClient: WebClient by memoized()
 
-    beforeGroup {
-        RxHelper.deployVerticle(vertx, DatabaseVerticle(), deploymentOptionsOf(worker = true, config = json { obj("schema" to "test") })).flatMap {
-            deployIds.add(it)
-            RxHelper.deployVerticle(vertx, HttpVerticle()).map {
-                deployIds.add(it)
-            }
-        }.blockingGet()
-    }
+  beforeGroup {
+    RxHelper.deployVerticle(
+      vertx,
+      DatabaseVerticle(),
+      deploymentOptionsOf(worker = true, config = json { obj("schema" to "test") })
+    ).flatMap {
+      deployIds.add(it)
+      RxHelper.deployVerticle(vertx, HttpVerticle()).map {
+        deployIds.add(it)
+      }
+    }.blockingGet()
+  }
 
-    afterGroup {
-        Observable.fromIterable(deployIds).forEach {
-            vertx.undeploy(it)
-        }
-        vertx.close()
+  afterGroup {
+    Observable.fromIterable(deployIds).forEach {
+      vertx.undeploy(it)
     }
-    group("Inventory Controller Testing") {
-        describe("get all inventory objects") {
-            context("there is no data") {
-                it("should return an empty array") {
-                    webClient.get(8080, "localhost", "/api/inventory").rxSend().map {
-                            it.bodyAsJsonArray()
-                        }.test()
-                        .assertEmpty()
-                        .await(1, TimeUnit.SECONDS)
-                }
-            }
+    vertx.close()
+  }
+  group("Inventory Controller Testing") {
+    describe("get all inventory objects") {
+      context("there is no data") {
+        it("should return an empty array") {
+          webClient.get(8080, "localhost", "/api/inventory").rxSend().map {
+            it.bodyAsJsonArray()
+          }.test()
+            .assertEmpty()
+            .await(1, TimeUnit.SECONDS)
         }
+      }
     }
+  }
 })
