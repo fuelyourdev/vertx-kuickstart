@@ -12,24 +12,35 @@ class HttpVerticle : AbstractVerticle() {
 
   override fun rxStart(): Completable {
     val mainRouter = Router.router(vertx)
-    val pkg = this.javaClass.`package`.name.substringBeforeLast('.') +
-        ".controllers"
-    val swaggerFile =
-      SwaggerMerger.mergeAllInDirectory("swagger")
-        ?: throw RuntimeException("Unable to process Swagger file")
-    val staticHandler = StaticHandler.create()
-      .setDirectoryListing(false)
-      .setIncludeHidden(false)
+    mountApiRoutes(mainRouter)
+    mountStaticRoutes(mainRouter)
+    return startupHttpServer(mainRouter)
+  }
 
+  private fun mountApiRoutes(mainRouter: Router) {
     val apiRouter = Router.router(vertx)
-    SwaggerRouter.route(apiRouter, swaggerFile, pkg)
+    setRoutesFromSwagger(apiRouter)
     mainRouter.mountSubRouter("/api", apiRouter)
+  }
 
-    mainRouter.get().handler(staticHandler)
+  private fun setRoutesFromSwagger(apiRouter: Router) {
+    val pkg = javaClass.`package`.name.substringBeforeLast('.') + ".controllers"
+    val swaggerFile = SwaggerMerger.mergeAllInDirectory("swagger")
+      ?: throw Exception("Unable to process Swagger file")
+    SwaggerRouter.route(apiRouter, swaggerFile, pkg)
+  }
 
-    return vertx.createHttpServer(
-      HttpServerOptions().setCompressionSupported(true)
+  private fun mountStaticRoutes(mainRouter: Router) {
+    mainRouter.get().handler(
+      StaticHandler.create()
+        .setDirectoryListing(false)
+        .setIncludeHidden(false)
     )
+  }
+
+  private fun startupHttpServer(mainRouter: Router?): Completable {
+    return vertx
+      .createHttpServer(HttpServerOptions().setCompressionSupported(true))
       .requestHandler(mainRouter)
       .rxListen(config().getInteger("http.port", 8080))
       .ignoreElement()
