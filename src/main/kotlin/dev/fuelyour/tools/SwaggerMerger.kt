@@ -11,7 +11,9 @@ import org.reflections.scanners.ResourcesScanner
 object SwaggerMerger {
   fun mergeAllInDirectory(path: String): OpenAPI? {
     val reflections = Reflections(path, ResourcesScanner())
-    val resourceList = reflections.getResources { it != null && it.endsWith(".yaml") }
+    val resourceList = reflections.getResources {
+      it != null && it.endsWith(".yaml")
+    }
     var merged: OpenAPI? = null
 
     resourceList.forEach {
@@ -26,7 +28,11 @@ object SwaggerMerger {
   }
 
   private fun loadSwagger(filename: String): OpenAPI {
-    return OpenAPIV3Parser().readLocation(filename, null, OpenApi3Utils.getParseOptions()).openAPI
+    return OpenAPIV3Parser().readLocation(
+      filename,
+      null,
+      OpenApi3Utils.getParseOptions()
+    ).openAPI
   }
 
   private fun mergeSwagger(merged: OpenAPI, new: OpenAPI) {
@@ -41,11 +47,16 @@ object SwaggerMerger {
   }
 
   private fun <T> combineLists(list1: List<T>?, list2: List<T>?): List<T>? {
-    val combined = ListUtils.union(list1 ?: listOf<T>(), list2 ?: listOf<T>())
+    val combined = ListUtils.union(
+      list1 ?: listOf<T>(),
+      list2 ?: listOf<T>())
     return if (combined.isEmpty()) null else combined
   }
 
-  private fun <T, R> combineMaps(map1: MutableMap<T, R>?, map2: MutableMap<T, R>?): Map<T, R>? {
+  private fun <T, R> combineMaps(
+    map1: MutableMap<T, R>?,
+    map2: MutableMap<T, R>?
+  ): Map<T, R>? {
     return if (map1 == null) {
       map2
     } else if (map2 == null) {

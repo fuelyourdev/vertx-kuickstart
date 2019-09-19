@@ -12,49 +12,64 @@ import io.vertx.reactivex.sqlclient.Tuple
 
 abstract class Repository(val pool: PgPool, val table: String) {
 
-  fun all() = pool.rxBegin().flatMap { connection ->
-    connection.rxPrepare("select * from $table")
-      .flatMapObservable { preparedQuery ->
-        val rowStream = preparedQuery.createStream(50, Tuple.tuple())
-        rowStream.toObservable();
-      }.map {
-        jsonRow(it)
-      }.toJsonArray()
-  }
+  fun all() =
+    pool.rxBegin().flatMap { connection ->
+      connection.rxPrepare("select * from $table")
+        .flatMapObservable { preparedQuery ->
+          val rowStream = preparedQuery.createStream(50, Tuple.tuple())
+          rowStream.toObservable();
+        }.map {
+          jsonRow(it)
+        }.toJsonArray()
+    }
 
-  fun find(id: String) = pool.rxPreparedQuery("select * from $table where id = $1", Tuple.of(id)).flatMapObservable {
-    Observable.fromIterable(it.asIterable())
-  }.map {
-    jsonRow(it)
-  }.singleOrError()
+  fun find(id: String) =
+    pool.rxPreparedQuery(
+      "select * from $table where id = $1",
+      Tuple.of(id)
+    ).flatMapObservable {
+      Observable.fromIterable(it.asIterable())
+    }.map {
+      jsonRow(it)
+    }.singleOrError()
 
-  fun findBy(query: String, params: Tuple) = pool.rxPreparedQuery(query, params).flatMapObservable {
-    Observable.fromIterable(it.asIterable())
-  }.map {
-    jsonRow(it)
-  }.singleOrError()
+  fun findBy(query: String, params: Tuple) =
+    pool.rxPreparedQuery(query, params).flatMapObservable {
+      Observable.fromIterable(it.asIterable())
+    }.map {
+      jsonRow(it)
+    }.singleOrError()
 
-  fun delete(id: String) = pool.rxPreparedQuery("delete from $table where id = $1", Tuple.of(id)).flatMapObservable {
-    Observable.fromIterable(it.asIterable())
-  }.map {
-    jsonRow(it)
-  }.singleOrError()
+  fun delete(id: String) =
+    pool.rxPreparedQuery(
+      "delete from $table where id = $1",
+      Tuple.of(id)
+    ).flatMapObservable {
+      Observable.fromIterable(it.asIterable())
+    }.map {
+      jsonRow(it)
+    }.singleOrError()
 
-  fun where(query: String, params: Tuple) = pool.rxBegin().flatMap { connection ->
-    connection.rxPrepare(query)
-      .flatMapObservable { preparedQuery ->
-        val rowStream = preparedQuery.createStream(50, params)
-        rowStream.toObservable();
-      }.map {
-        jsonRow(it)
-      }.toJsonArray()
-  }
+  fun where(query: String, params: Tuple) =
+    pool.rxBegin().flatMap { connection ->
+      connection.rxPrepare(query)
+        .flatMapObservable { preparedQuery ->
+          val rowStream = preparedQuery.createStream(50, params)
+          rowStream.toObservable();
+        }.map {
+          jsonRow(it)
+        }.toJsonArray()
+    }
 
   private fun jsonRow(row: Row): JsonObject {
     return buildOutJsonRow(row, json { obj() }, 0)
   }
 
-  private fun buildOutJsonRow(dbRow: Row, currentJson: JsonObject, currentColumn: Int): JsonObject {
+  private fun buildOutJsonRow(
+    dbRow: Row,
+    currentJson: JsonObject,
+    currentColumn: Int
+  ): JsonObject {
     return when (dbRow.size()) {
       currentColumn -> currentJson
       else -> {
@@ -73,5 +88,6 @@ abstract class Repository(val pool: PgPool, val table: String) {
     }
   }
 
-  private fun <T> Observable<T>.toJsonArray() = this.toList().map { JsonArray(it) }
+  private fun <T> Observable<T>.toJsonArray() =
+    toList().map { JsonArray(it) }
 }

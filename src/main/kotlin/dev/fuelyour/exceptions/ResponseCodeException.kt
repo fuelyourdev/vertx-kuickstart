@@ -14,16 +14,22 @@ open class ResponseCodeException(
 ) : RuntimeException(message, throwable) {
 
   companion object {
-    fun fromStatusCode(statusCode: HTTPStatusCode?, errorMessage: String, details: JsonArray): ResponseCodeException {
-      when (statusCode) {
-        UNAUTHORIZED -> return AuthorizationException(errorMessage, details)
-        BAD_REQUEST -> return BadRequestException(errorMessage, details)
-        CONFLICT -> return ConflictException(errorMessage, details)
-        FORBIDDEN -> return ForbiddenException(errorMessage, details)
-        NOT_FOUND -> return ModelNotFoundException(errorMessage, details)
-        TOO_MANY_REQUESTS -> return TooManyRequestsException(errorMessage, details)
-        UNAVAILABLE, BAD_GATEWAY, GATEWAY_TIMEOUT -> return UnavailableException(errorMessage, details)
-        else -> return ServiceException(errorMessage, details)
+    fun fromStatusCode(
+      statusCode: HTTPStatusCode?,
+      errorMessage: String,
+      details: JsonArray
+    ): ResponseCodeException {
+      return when (statusCode) {
+        UNAUTHORIZED -> AuthorizationException(errorMessage, details)
+        BAD_REQUEST -> BadRequestException(errorMessage, details)
+        CONFLICT -> ConflictException(errorMessage, details)
+        FORBIDDEN -> ForbiddenException(errorMessage, details)
+        NOT_FOUND -> ModelNotFoundException(errorMessage, details)
+        TOO_MANY_REQUESTS -> TooManyRequestsException(errorMessage, details)
+        UNAVAILABLE,
+        BAD_GATEWAY,
+        GATEWAY_TIMEOUT -> UnavailableException(errorMessage, details)
+        else -> ServiceException(errorMessage, details)
       }
     }
   }
@@ -33,26 +39,50 @@ open class ResponseCodeException(
   }
 }
 
-class AuthorizationException(message: String = "", details: JsonArray = JsonArray(), throwable: Throwable? = null) :
-  ResponseCodeException(message, details, UNAUTHORIZED, throwable)
+class AuthorizationException(
+  message: String = "",
+  details: JsonArray = JsonArray(),
+  throwable: Throwable? = null
+) : ResponseCodeException(message, details, UNAUTHORIZED, throwable)
 
-class BadRequestException(message: String = "", details: JsonArray = JsonArray(), throwable: Throwable? = null) :
-  ResponseCodeException(message, details, BAD_REQUEST, throwable)
+class BadRequestException(
+  message: String = "",
+  details: JsonArray = JsonArray(),
+  throwable: Throwable? = null
+) : ResponseCodeException(message, details, BAD_REQUEST, throwable)
 
-class ConflictException(message: String = "", details: JsonArray = JsonArray(), throwable: Throwable? = null) :
-  ResponseCodeException(message, details, CONFLICT, throwable)
+class ConflictException(
+  message: String = "",
+  details: JsonArray = JsonArray(),
+  throwable: Throwable? = null
+) : ResponseCodeException(message, details, CONFLICT, throwable)
 
-class ForbiddenException(message: String = "", details: JsonArray = JsonArray(), throwable: Throwable? = null) :
-  ResponseCodeException(message, details, FORBIDDEN, throwable)
+class ForbiddenException(
+  message: String = "",
+  details: JsonArray = JsonArray(),
+  throwable: Throwable? = null
+) : ResponseCodeException(message, details, FORBIDDEN, throwable)
 
-class ModelNotFoundException(message: String = "", details: JsonArray = JsonArray(), throwable: Throwable? = null) :
-  ResponseCodeException(message, details, NOT_FOUND, throwable)
+class ModelNotFoundException(
+  message: String = "",
+  details: JsonArray = JsonArray(),
+  throwable: Throwable? = null
+) : ResponseCodeException(message, details, NOT_FOUND, throwable)
 
-class TooManyRequestsException(message: String = "", details: JsonArray = JsonArray(), throwable: Throwable? = null) :
-  ResponseCodeException(message, details, TOO_MANY_REQUESTS, throwable)
+class TooManyRequestsException(
+  message: String = "",
+  details: JsonArray = JsonArray(),
+  throwable: Throwable? = null
+) : ResponseCodeException(message, details, TOO_MANY_REQUESTS, throwable)
 
-class UnavailableException(message: String = "", details: JsonArray = JsonArray(), throwable: Throwable? = null) :
-  ResponseCodeException(message, details, UNAVAILABLE, throwable)
+class UnavailableException(
+  message: String = "",
+  details: JsonArray = JsonArray(),
+  throwable: Throwable? = null
+) : ResponseCodeException(message, details, UNAVAILABLE, throwable)
 
-class ServiceException(message: String = "", details: JsonArray = JsonArray(), throwable: Throwable? = null) :
-  ResponseCodeException(message, details, INTERNAL_ERROR, throwable)
+class ServiceException(
+  message: String = "",
+  details: JsonArray = JsonArray(),
+  throwable: Throwable? = null
+) : ResponseCodeException(message, details, INTERNAL_ERROR, throwable)

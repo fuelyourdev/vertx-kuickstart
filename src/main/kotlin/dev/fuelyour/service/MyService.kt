@@ -34,7 +34,11 @@ fun start(overrideModule: Module? = null) {
     }
   }
 
-  RxHelper.deployVerticle(vertx, DatabaseVerticle(), deploymentOptionsOf(worker = true)).flatMap {
+  RxHelper.deployVerticle(
+    vertx,
+    DatabaseVerticle(),
+    deploymentOptionsOf(worker = true)
+  ).flatMap {
     RxHelper.deployVerticle(vertx, HttpVerticle())
   }.doOnError { err ->
     err.printStackTrace()

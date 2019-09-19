@@ -22,7 +22,8 @@ class VertxRequestHelper(val vertx: Vertx) : RequestHelper {
     headers: Map<String, String>?
   ): Single<Message<T>> {
     if (headers != null)
-      return vertx.eventBus().rxRequest<T>(address, message, deliveryOptionsOf(headers = headers))
+      return vertx.eventBus()
+        .rxRequest<T>(address, message, deliveryOptionsOf(headers = headers))
     return vertx.eventBus().rxRequest<T>(address, message)
   }
 }

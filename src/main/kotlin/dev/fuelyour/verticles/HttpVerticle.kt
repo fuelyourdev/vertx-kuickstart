@@ -12,9 +12,11 @@ class HttpVerticle : AbstractVerticle() {
 
   override fun rxStart(): Completable {
     val mainRouter = Router.router(vertx)
-    val pkg = this.javaClass.`package`.name.substringBeforeLast('.') + ".controllers"
+    val pkg = this.javaClass.`package`.name.substringBeforeLast('.') +
+        ".controllers"
     val swaggerFile =
-      SwaggerMerger.mergeAllInDirectory("swagger") ?: throw RuntimeException("Unable to process Swagger file")
+      SwaggerMerger.mergeAllInDirectory("swagger")
+        ?: throw RuntimeException("Unable to process Swagger file")
     val staticHandler = StaticHandler.create()
       .setDirectoryListing(false)
       .setIncludeHidden(false)
@@ -25,9 +27,11 @@ class HttpVerticle : AbstractVerticle() {
 
     mainRouter.get().handler(staticHandler)
 
-    return vertx.createHttpServer(HttpServerOptions().setCompressionSupported(true))
+    return vertx.createHttpServer(
+      HttpServerOptions().setCompressionSupported(true)
+    )
       .requestHandler(mainRouter)
       .rxListen(config().getInteger("http.port", 8080))
-      .toCompletable()
+      .ignoreElement()
   }
 }

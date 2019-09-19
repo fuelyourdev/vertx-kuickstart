@@ -13,7 +13,10 @@ class DirectoryController(
   private val jwtHelper: JWTHelper
 ) {
 
-  fun post(@Body("username") username: String, @Body("password") password: String): String {
+  fun post(
+    @Body("username") username: String,
+    @Body("password") password: String
+  ): String {
     if (username == "bob" && password == "secret") {
       return jwtHelper.generateToken(json {
         obj("roles" to array(User.Role.ADMIN))

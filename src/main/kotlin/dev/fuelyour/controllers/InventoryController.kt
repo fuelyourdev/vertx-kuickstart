@@ -12,7 +12,11 @@ class InventoryController(
   private val requestHelper: RequestHelper
 ) {
 
-  fun get(id: String?, searchString: String?, limit: Int = 100): Single<ClusterSerializable> {
+  fun get(
+    id: String?,
+    searchString: String?,
+    limit: Int = 100
+  ): Single<ClusterSerializable> {
     return requestHelper.request<ClusterSerializable>(
       "db.exampledb",
       json { obj() },

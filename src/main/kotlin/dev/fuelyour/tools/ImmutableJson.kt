@@ -399,7 +399,9 @@ class ImmutableNullableJsonArray : ImmutableJsonArray<Any?> {
       ImmutableNullableJsonArray(this, false)
     }
 
-  override operator fun minus(other: ImmutableJsonArray<*>): ImmutableNullableJsonArray =
+  override operator fun minus(
+    other: ImmutableJsonArray<*>
+  ): ImmutableNullableJsonArray =
     with(arr.copy()) {
       other.arr.forEach { remove(it) }
       ImmutableNullableJsonArray(this, false)
@@ -484,7 +486,9 @@ class ImmutableNoNullsJsonArray : ImmutableJsonArray<Any> {
   override fun stream(): Stream<Any> =
     arr.stream().map { makeImmutable(it) as Any }
 
-  operator fun plus(other: ImmutableNoNullsJsonArray): ImmutableNoNullsJsonArray =
+  operator fun plus(
+    other: ImmutableNoNullsJsonArray
+  ): ImmutableNoNullsJsonArray =
     with(arr.copy()) {
       addAll(other.arr)
       ImmutableNoNullsJsonArray(this)
@@ -508,7 +512,9 @@ class ImmutableNoNullsJsonArray : ImmutableJsonArray<Any> {
       ImmutableNoNullsJsonArray(this)
     }
 
-  override operator fun minus(other: ImmutableJsonArray<*>): ImmutableNoNullsJsonArray =
+  override operator fun minus(
+    other: ImmutableJsonArray<*>
+  ): ImmutableNoNullsJsonArray =
     with(arr.copy()) {
       other.arr.forEach { remove(it) }
       ImmutableNoNullsJsonArray(this)
