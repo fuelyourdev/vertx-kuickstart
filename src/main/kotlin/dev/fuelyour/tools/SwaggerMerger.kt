@@ -14,7 +14,7 @@ object SwaggerMerger {
     findSwaggerFilesInPath(path)
       .map { loadSwagger("/$it") }
       .fold(null as OpenAPI?) {
-          s1, s2 -> s1?.let { it.merge(s2) } ?: s2
+          s1, s2 -> s1?.merge(s2) ?: s2
       }
 
   private fun findSwaggerFilesInPath(path: String): Set<String> =
