@@ -61,7 +61,7 @@ object SwaggerMerger {
   private fun <T, R> combineMaps(
     map1: MutableMap<T, R>?,
     map2: MutableMap<T, R>?
-  ): Map<T, R>? {
+  ): MutableMap<T, R>? {
     return when {
       map1 == null -> map2
       map2 == null -> map1

@@ -1,258 +1,92 @@
 package dev.fuelyour.tools
 
-import dev.fuelyour.annotations.Body
-import dev.fuelyour.exceptions.AuthorizationException
-import dev.fuelyour.exceptions.HTTPStatusCode
-import dev.fuelyour.exceptions.ResponseCodeException
-import io.reactivex.Single
 import io.swagger.v3.oas.models.OpenAPI
-import io.swagger.v3.oas.models.parameters.Parameter
+import io.swagger.v3.oas.models.Operation
+import io.swagger.v3.oas.models.PathItem
 import io.swagger.v3.parser.ResolverCache
+import io.vertx.core.Handler
 import io.vertx.core.http.HttpMethod
-import io.vertx.core.json.JsonArray
-import io.vertx.core.json.JsonObject
-import io.vertx.core.shareddata.impl.ClusterSerializable
 import io.vertx.ext.web.api.contract.openapi3.impl.OpenAPI3RequestValidationHandlerImpl
+import io.vertx.reactivex.ext.web.Route
 import io.vertx.reactivex.ext.web.Router
 import io.vertx.reactivex.ext.web.RoutingContext
 import io.vertx.reactivex.ext.web.api.contract.openapi3.OpenAPI3RequestValidationHandler
 import io.vertx.reactivex.ext.web.handler.BodyHandler
-import io.vertx.reactivex.ext.web.handler.JWTAuthHandler
 import io.vertx.reactivex.ext.web.handler.TimeoutHandler
-import org.koin.core.KoinComponent
-import org.koin.core.context.GlobalContext.get
-import org.koin.core.inject
-import java.lang.reflect.InvocationTargetException
-import kotlin.reflect.KAnnotatedElement
-import kotlin.reflect.KCallable
-import kotlin.reflect.KClass
-import kotlin.reflect.KParameter
-import kotlin.reflect.full.instanceParameter
-import kotlin.reflect.full.isSubclassOf
-import kotlin.reflect.jvm.jvmErasure
 
-private typealias RequiredRoles = Map<String, List<String>>
+typealias Roles = Map<String, List<String>>
+typealias RouteHandlers = List<Handler<RoutingContext>>
 
-fun Router.route(swaggerFile: OpenAPI, controllerPackage: String) {
-  route()
-    .produces("application/json")
-    .handler(BodyHandler.create().setBodyLimit(5120000))
-    .handler(TimeoutHandler.create(30000))
-
-  SwaggerRouter.addRoutesFromSwaggerFile(this, swaggerFile, controllerPackage)
+interface AuthHandlerSupplier {
+  fun createAuthHandlers(roles: Roles): RouteHandlers
 }
 
-object SwaggerRouter : KoinComponent {
+interface ServiceHandlerSupplier {
+  fun createServiceHandlers(opId: String): RouteHandlers
+  fun createFailureHandlers(): RouteHandlers
+}
 
-  private val jwtHelper: JWTHelper by inject()
+class SwaggerRouter(
+  private val authHandlerSupplier: AuthHandlerSupplier,
+  private val serviceHandlerSupplier: ServiceHandlerSupplier,
+  private val traverser: SwaggerTraverser
+) {
 
-  @Suppress("UNCHECKED_CAST")
-  fun addRoutesFromSwaggerFile(
-    router: Router,
+  fun route(router: Router, swaggerFile: OpenAPI) {
+    router.route()
+      .produces("application/json")
+      .handler(BodyHandler.create().setBodyLimit(5120000))
+      .handler(TimeoutHandler.create(30000))
+
+    traverser.traverseSwaggerFile(swaggerFile) { swaggerRoute ->
+      specifyRoute(router, swaggerRoute)
+    }
+  }
+
+  private fun specifyRoute(router: Router, sr: SwaggerRoute) {
+    val route = router.route(
+      sr.verb.convertToVertxVerb(),
+      sr.path.convertToVertxPath()
+    )
+    route.handleJwtAuth(sr.authRoles)
+    route.handleRequestValidation(sr.op, sr.swaggerFile, sr.swaggerCache)
+    route.handleServiceCall(sr.opId)
+  }
+
+  private fun String.convertToVertxPath() =
+    replace('{', ':').replace("}", "")
+
+  private fun PathItem.HttpMethod.convertToVertxVerb() =
+    HttpMethod.valueOf(name)
+
+  private fun Route.handleJwtAuth(roles: Roles) {
+    if (roles.isNotEmpty()) {
+      with(authHandlerSupplier.createAuthHandlers(roles)) {
+        forEach { handler(it) }
+      }
+    }
+  }
+
+  private fun Route.handleRequestValidation(
+    op: Operation,
     swaggerFile: OpenAPI,
-    controllerPackage: String
+    swaggerCache: ResolverCache
   ) {
-    val swaggerCache = ResolverCache(swaggerFile, null, null)
+    val impl = OpenAPI3RequestValidationHandlerImpl(
+      op,
+      op.parameters,
+      swaggerFile,
+      swaggerCache
+    )
+    handler(OpenAPI3RequestValidationHandler(impl))
+  }
 
-    val controllerInstances = mutableMapOf<String, Any>()
-    swaggerFile.paths.forEach { (path, pathItem) ->
-      val convertedPath = path.replace('{', ':').replace("}", "")
-      pathItem.readOperationsMap().forEach { (verb, op) ->
-        val opId = op.operationId ?: ""
-        val split = opId.split('.')
-        if (split.size < 2)
-          throw RuntimeException(
-            "Unable to parse operation $opId for path $path")
-        val controllerName = split[0]
-        val methodName = split[1]
-        val roles = op.extensions
-          ?.get("x-auth-roles") as? Map<String, List<String>>
-
-        val controller = controllerInstances.getOrElse(controllerName, {
-          val kclass = Class
-            .forName("${controllerPackage}.$controllerName")
-            .kotlin
-          val inst = get().koin.get<Any>(kclass, null, null)
-          controllerInstances[controllerName] = inst
-          inst
-        })
-
-        val method = controller::class.members.find { it.name == methodName }
-          ?: throw RuntimeException(
-            "Method $methodName not found for controller $controllerName")
-
-        val route = router.route(HttpMethod.valueOf(verb.name), convertedPath)
-        if (roles?.isNotEmpty() == true)
-          route.handler(JWTAuthHandler.create(jwtHelper.authProvider))
-        route.handler(
-          OpenAPI3RequestValidationHandler(
-            OpenAPI3RequestValidationHandlerImpl(
-              op,
-              op.parameters,
-              swaggerFile,
-              swaggerCache
-            )
-          )
-        )
-        route.handler { context ->
-          if (roles?.isNotEmpty() == true)
-            authenticateUser(
-              roles,
-              context.user().principal().getJsonArray("roles", JsonArray())
-            )
-          method.callWithParams(controller, context, op.parameters)
-        }.failureHandler { replyWithError(it, it.failure()) }
-      }
+  private fun Route.handleServiceCall(opId: String) {
+    with(serviceHandlerSupplier.createServiceHandlers(opId)) {
+      forEach { handler(it) }
+    }
+    with(serviceHandlerSupplier.createFailureHandlers()) {
+      forEach { handler(it) }
     }
   }
-
-  private fun authenticateUser(
-    requiredRoles: RequiredRoles,
-    userRoles: JsonArray
-  ) {
-    with (requiredRoles) {
-      if ((taggedWith("oneOf") && !userRoles.oneOf(rolesIn("oneOf"))) ||
-        (taggedWith("anyOf") && !userRoles.anyOf(rolesIn("anyOf"))) ||
-        (taggedWith("allOf") && !userRoles.allOf(rolesIn("allOf")))
-      )
-        throw AuthorizationException()
-    }
-  }
-
-  private fun RequiredRoles.taggedWith(tag: String): Boolean =
-    this[tag] != null
-
-  private fun RequiredRoles.rolesIn(tag: String): JsonArray =
-    JsonArray(this[tag])
-
-  private fun replyWithError(context: RoutingContext, failure: Throwable) {
-    val response = context.response()
-    if (failure is ResponseCodeException) {
-      response.putHeader("content-type", "application/json")
-      response
-        .setStatusCode(failure.statusCode.value())
-        .end(failure.asJson().encode())
-    } else if (context.statusCode() <= 0) {
-      response
-        .setStatusCode(HTTPStatusCode.INTERNAL_ERROR.value())
-        .end(failure.message ?: "")
-    } else {
-      response
-        .setStatusCode(context.statusCode())
-        .end(failure.message ?: "")
-    }
-  }
-
-  private fun KCallable<*>.callWithParams(
-    instance: Any?,
-    context: RoutingContext,
-    swaggerParams: List<Parameter>?
-  ) {
-    try {
-      val params: MutableMap<KParameter, Any?> = mutableMapOf()
-      this.instanceParameter?.let { params.put(it, instance) }
-      this.parameters.forEach { param ->
-        if (param.isSubclassOf(RoutingContext::class)) {
-          params[param] = context
-        } else if (param.findAnnotation<Body>() != null) {
-          val bodyAnn = param.findAnnotation<Body>()
-          if (bodyAnn != null && bodyAnn.key.isNotBlank()) {
-            params[param] = context.bodyAsJson.getValue(bodyAnn.key)
-          } else if (param.isSubclassOf(JsonObject::class)) {
-            params[param] = context.bodyAsJson
-          } else if (param.isSubclassOf(JsonArray::class)) {
-            params[param] = context.bodyAsJsonArray
-          } else if (param.isSubclassOf(String::class)) {
-            params[param] = context.bodyAsString
-          }
-        } else if (param.kind != KParameter.Kind.INSTANCE) {
-          swaggerParams?.find { it.name == param.name }?.let { sp ->
-            when (sp.`in`) {
-              "path" -> params[param] =
-                parseParam(param, context.pathParam(param.name))
-              "query" -> {
-                val queryParam = context.queryParam(param.name)
-                if (param.isSubclassOf(List::class))
-                  params[param] = queryParam
-                else if (queryParam.isNotEmpty())
-                  params[param] = parseParam(param, queryParam[0])
-              }
-            }
-          }
-          if (params[param] == null && !param.isOptional)
-            params[param] = null
-        }
-
-      }
-      handleResponse(context, this.callBy(params))
-    } catch (e: Exception) {
-      if (e is InvocationTargetException) {
-        val ex = e.targetException
-        ex.printStackTrace()
-        throw ex
-      } else {
-        e.printStackTrace()
-        throw e
-      }
-    }
-  }
-
-  private fun parseParam(param: KParameter, value: String): Any {
-    return if (param.isSubclassOf(Int::class))
-      value.toInt()
-    else if (param.isSubclassOf(Boolean::class))
-      value.toBoolean()
-    else value
-  }
-
-  private fun handleResponse(context: RoutingContext, response: Any?) {
-    when (response) {
-      is Single<*> -> {
-        response.subscribe({ onComplete ->
-          handleResponse(context, onComplete)
-        }, { error -> replyWithError(context, error) })
-      }
-      is ClusterSerializable -> {
-        context.response().putHeader("content-type", "application/json")
-        context.response().end(response.encode())
-      }
-      !is Unit -> {
-        context.response().end(response.toString())
-      }
-    }
-  }
-
-  private fun ClusterSerializable.encode(): String {
-    return when (this) {
-      is JsonObject -> this.encode()
-      is JsonArray -> this.encode()
-      else -> this.toString()
-    }
-  }
-
-  private inline fun <reified T : Annotation> KAnnotatedElement.findAnnotation() =
-    annotations.find { it is T } as? T
-
-  private fun KParameter.isSubclassOf(clazz: KClass<*>): Boolean =
-    type.jvmErasure.isSubclassOf(clazz)
-
-  private fun JsonArray.oneOf(other: JsonArray): Boolean {
-    var hasOne = false
-    other.forEach {
-      if (this.contains(it)) {
-        if (hasOne)
-          return false
-        hasOne = true
-      }
-    }
-    return hasOne
-  }
-
-  private fun JsonArray.anyOf(other: JsonArray): Boolean {
-    var hasOne = false
-    other.forEach { if (this.contains(it)) hasOne = true }
-    return hasOne
-  }
-
-  private fun JsonArray.allOf(other: JsonArray) = this == other
 }

@@ -1,7 +1,6 @@
 package dev.fuelyour.service
 
-import dev.fuelyour.tools.RequestHelper
-import dev.fuelyour.tools.VertxRequestHelper
+import dev.fuelyour.tools.*
 import dev.fuelyour.verticles.DatabaseVerticle
 import dev.fuelyour.verticles.HttpVerticle
 import io.reactivex.plugins.RxJavaPlugins
@@ -10,7 +9,10 @@ import io.vertx.reactivex.core.RxHelper
 import io.vertx.reactivex.core.Vertx
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
+import org.koin.dsl.bind
 import org.koin.dsl.module
+import org.koin.experimental.builder.single
+import org.koin.experimental.builder.singleBy
 
 fun main() {
   start()
@@ -22,12 +24,15 @@ fun start(overrideModule: Module? = null) {
   RxJavaPlugins.setIoSchedulerHandler { s -> RxHelper.blockingScheduler(vertx) }
   RxJavaPlugins.setNewThreadSchedulerHandler { s -> RxHelper.scheduler(vertx) }
 
-  val module = module(override = true) {
+  val module = module {
     single { vertx }
-    single<RequestHelper> { VertxRequestHelper(get()) }
+    singleBy<RequestHelper, VertxRequestHelper>()
+    single<JwtAuthHelper>() bind AuthHandlerSupplier::class
+    singleBy<ServiceHandlerSupplier, ServiceHandler>()
+    single<SwaggerTraverser>()
+    single<SwaggerRouter>()
   }
   startKoin {
-    modules(buildAutoModule())
     modules(module)
     overrideModule?.let {
       modules(it)

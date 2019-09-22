@@ -2,14 +2,17 @@ package dev.fuelyour.verticles
 
 import dev.fuelyour.tools.SwaggerMerger
 import dev.fuelyour.tools.SwaggerRouter
-import dev.fuelyour.tools.route
 import io.reactivex.Completable
 import io.vertx.core.http.HttpServerOptions
 import io.vertx.reactivex.core.AbstractVerticle
 import io.vertx.reactivex.ext.web.Router
 import io.vertx.reactivex.ext.web.handler.StaticHandler
+import org.koin.core.KoinComponent
+import org.koin.core.inject
 
-class HttpVerticle : AbstractVerticle() {
+class HttpVerticle : AbstractVerticle(), KoinComponent {
+
+  private val swaggerRouter: SwaggerRouter by inject()
 
   override fun rxStart(): Completable {
     val mainRouter = Router.router(vertx)
@@ -25,10 +28,9 @@ class HttpVerticle : AbstractVerticle() {
   }
 
   private fun setRoutesFromSwagger(apiRouter: Router) {
-    val pkg = javaClass.`package`.name.substringBeforeLast('.') + ".controllers"
     val swaggerFile = SwaggerMerger.mergeAllInDirectory("swagger")
       ?: throw Exception("Unable to process Swagger file")
-    apiRouter.route(swaggerFile, pkg)
+    swaggerRouter.route(apiRouter, swaggerFile)
   }
 
   private fun mountStaticRoutes(mainRouter: Router) {
