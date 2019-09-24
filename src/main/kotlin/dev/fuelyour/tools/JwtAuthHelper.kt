@@ -15,7 +15,7 @@ import io.vertx.reactivex.ext.web.handler.JWTAuthHandler
 
 class JwtAuthHelper(
   private val vertx: Vertx
-): AuthHandlerSupplier {
+): SwaggerAuthHandler {
   private val config = Config.config(vertx).blockingGet()
   private val authProvider = JWTAuth.create(
     vertx, JWTAuthOptions()

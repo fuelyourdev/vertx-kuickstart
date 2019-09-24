@@ -13,22 +13,32 @@ import io.vertx.reactivex.ext.web.RoutingContext
 import io.vertx.reactivex.ext.web.api.contract.openapi3.OpenAPI3RequestValidationHandler
 import io.vertx.reactivex.ext.web.handler.BodyHandler
 import io.vertx.reactivex.ext.web.handler.TimeoutHandler
+import org.koin.core.KoinComponent
+import org.koin.core.inject
 
 typealias Roles = Map<String, List<String>>
 typealias RouteHandlers = List<Handler<RoutingContext>>
 
-interface AuthHandlerSupplier {
+interface SwaggerAuthHandler {
   fun createAuthHandlers(roles: Roles): RouteHandlers
 }
 
-interface ServiceHandlerSupplier {
-  fun createServiceHandlers(opId: String): RouteHandlers
-  fun createFailureHandlers(): RouteHandlers
+fun Router.route(swaggerFile: OpenAPI) {
+  SwaggerRouterSingleton.route(this, swaggerFile)
+}
+
+private object SwaggerRouterSingleton : KoinComponent {
+
+  private val impl: SwaggerRouter by inject()
+
+  fun route(router: Router, swaggerFile: OpenAPI) {
+    impl.route(router, swaggerFile)
+  }
 }
 
 class SwaggerRouter(
-  private val authHandlerSupplier: AuthHandlerSupplier,
-  private val serviceHandlerSupplier: ServiceHandlerSupplier,
+  private val swaggerAuthHandler: SwaggerAuthHandler,
+  private val swaggerServiceHandler: SwaggerServiceHandler,
   private val traverser: SwaggerTraverser
 ) {
 
@@ -50,7 +60,7 @@ class SwaggerRouter(
     )
     route.handleJwtAuth(sr.authRoles)
     route.handleRequestValidation(sr.op, sr.swaggerFile, sr.swaggerCache)
-    route.handleServiceCall(sr.opId)
+    route.handleServiceCall(sr.op, sr.opId)
   }
 
   private fun String.convertToVertxPath() =
@@ -61,7 +71,7 @@ class SwaggerRouter(
 
   private fun Route.handleJwtAuth(roles: Roles) {
     if (roles.isNotEmpty()) {
-      with(authHandlerSupplier.createAuthHandlers(roles)) {
+      with(swaggerAuthHandler.createAuthHandlers(roles)) {
         forEach { handler(it) }
       }
     }
@@ -81,11 +91,11 @@ class SwaggerRouter(
     handler(OpenAPI3RequestValidationHandler(impl))
   }
 
-  private fun Route.handleServiceCall(opId: String) {
-    with(serviceHandlerSupplier.createServiceHandlers(opId)) {
+  private fun Route.handleServiceCall(op: Operation, opId: String) {
+    with(swaggerServiceHandler.createServiceHandlers(op, opId)) {
       forEach { handler(it) }
     }
-    with(serviceHandlerSupplier.createFailureHandlers()) {
+    with(swaggerServiceHandler.createFailureHandlers()) {
       forEach { handler(it) }
     }
   }

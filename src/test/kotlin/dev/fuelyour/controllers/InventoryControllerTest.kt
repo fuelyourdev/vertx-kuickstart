@@ -1,6 +1,6 @@
 package dev.fuelyour.controllers
 
-import dev.fuelyour.verticles.DatabaseVerticle
+import dev.fuelyour.verticles.ServiceVerticle
 import dev.fuelyour.verticles.HttpVerticle
 import io.reactivex.Observable
 import io.vertx.kotlin.core.deploymentOptionsOf
@@ -23,7 +23,7 @@ object InventoryControllerTest : Spek({
   beforeGroup {
     RxHelper.deployVerticle(
       vertx,
-      DatabaseVerticle(),
+      ServiceVerticle(),
       deploymentOptionsOf(worker = true, config = json { obj("schema" to "test") })
     ).flatMap {
       deployIds.add(it)

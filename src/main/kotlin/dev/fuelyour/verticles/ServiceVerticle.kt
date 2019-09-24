@@ -10,11 +10,12 @@ import io.vertx.kotlin.sqlclient.poolOptionsOf
 import io.vertx.reactivex.core.AbstractVerticle
 import io.vertx.reactivex.core.Vertx
 import io.vertx.reactivex.pgclient.PgPool
+import org.koin.core.KoinComponent
 import org.reflections.Reflections
 import java.lang.reflect.Parameter
 
 
-class DatabaseVerticle : AbstractVerticle() {
+class ServiceVerticle : AbstractVerticle(), KoinComponent {
 
   lateinit var resources: Map<String, Any>
   lateinit var dbName: String
