@@ -86,3 +86,10 @@ class ServiceException(
   details: JsonArray = JsonArray(),
   throwable: Throwable? = null
 ) : ResponseCodeException(message, details, INTERNAL_ERROR, throwable)
+
+
+class TimeoutException(
+  message: String = "",
+  details: JsonArray = JsonArray(),
+  throwable: Throwable? = null
+) : ResponseCodeException(message, details, GATEWAY_TIMEOUT, throwable)

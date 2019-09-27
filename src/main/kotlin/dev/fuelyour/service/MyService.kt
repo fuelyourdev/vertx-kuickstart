@@ -1,21 +1,20 @@
 package dev.fuelyour.service
 
+import dev.fuelyour.config.Config
 import dev.fuelyour.controllers.DirectoryController
 import dev.fuelyour.controllers.InventoryController
+import dev.fuelyour.repositories.InventoryRepo
 import dev.fuelyour.tools.*
-import dev.fuelyour.verticles.ServiceVerticle
 import dev.fuelyour.verticles.HttpVerticle
-import io.reactivex.plugins.RxJavaPlugins.*
-import io.vertx.kotlin.core.deploymentOptionsOf
-import io.vertx.reactivex.core.RxHelper
-import io.vertx.reactivex.core.Vertx
+import io.vertx.core.Vertx
+import io.vertx.kotlin.core.deployVerticleAwait
+import kotlinx.coroutines.runBlocking
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
 import org.koin.core.qualifier.named
 import org.koin.dsl.bind
 import org.koin.dsl.module
 import org.koin.experimental.builder.single
-import org.koin.experimental.builder.singleBy
 
 fun main() {
   start()
@@ -23,20 +22,23 @@ fun main() {
 
 fun start(overrideModule: Module? = null) {
   val vertx = Vertx.vertx()
-  setComputationSchedulerHandler { s -> RxHelper.scheduler(vertx) }
-  setIoSchedulerHandler { s -> RxHelper.blockingScheduler(vertx) }
-  setNewThreadSchedulerHandler { s -> RxHelper.scheduler(vertx) }
+  val config = Config.config(vertx)
 
   val module = module {
     single(named("controllerPackage")) { "dev.fuelyour.controllers" }
+    single(named("config")) { config }
+    single(named("schema")) { "public" }
     single { vertx }
-    singleBy<RequestHelper, VertxRequestHelper>()
-    single<JwtAuthHelper>() bind SwaggerAuthHandler::class
+    single {
+      JwtAuthHelper(get(named("config")), get())
+    } bind SwaggerAuthHandler::class
     single { SwaggerServiceHandler(get(named("controllerPackage")))}
     single<SwaggerTraverser>()
     single<SwaggerRouter>()
     single<InventoryController>()
     single<DirectoryController>()
+    single { DatabaseAccess(get(named("config")), get())}
+    single { InventoryRepo(get(named("schema"))) }
   }
   startKoin {
     modules(module)
@@ -45,13 +47,7 @@ fun start(overrideModule: Module? = null) {
     }
   }
 
-  RxHelper.deployVerticle(
-    vertx,
-    ServiceVerticle(),
-    deploymentOptionsOf(worker = true)
-  ).flatMap {
-    RxHelper.deployVerticle(vertx, HttpVerticle())
-  }.doOnError { err ->
-    err.printStackTrace()
-  }.subscribe()
+  runBlocking {
+    vertx.deployVerticleAwait(HttpVerticle())
+  }
 }

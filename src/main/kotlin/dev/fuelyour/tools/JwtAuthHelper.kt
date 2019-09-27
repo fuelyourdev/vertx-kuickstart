@@ -1,22 +1,26 @@
 package dev.fuelyour.tools
 
-import dev.fuelyour.config.Config
 import dev.fuelyour.exceptions.AuthorizationException
 import io.vertx.core.Handler
+import io.vertx.core.Vertx
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.auth.PubSecKeyOptions
+import io.vertx.ext.auth.jwt.JWTAuth
 import io.vertx.ext.auth.jwt.JWTAuthOptions
 import io.vertx.ext.jwt.JWTOptions
-import io.vertx.reactivex.core.Vertx
-import io.vertx.reactivex.ext.auth.jwt.JWTAuth
-import io.vertx.reactivex.ext.web.RoutingContext
-import io.vertx.reactivex.ext.web.handler.JWTAuthHandler
+import io.vertx.ext.web.RoutingContext
+import io.vertx.ext.web.handler.JWTAuthHandler
+import java.time.LocalDateTime
+import java.time.ZoneOffset
 
 class JwtAuthHelper(
-  private val vertx: Vertx
+  config: JsonObject,
+  vertx: Vertx
 ): SwaggerAuthHandler {
-  private val config = Config.config(vertx).blockingGet()
+
+  val EXPIRATION_MILLIS = 1000 * 60 * 60 * 30
+
   private val authProvider = JWTAuth.create(
     vertx, JWTAuthOptions()
       .addPubSecKey(
@@ -27,6 +31,20 @@ class JwtAuthHelper(
           .setSymmetric(true)
       )
   )
+
+  fun generateToken(json: JsonObject): String {
+    json.put("created", getCurrentUTCMillis())
+    return authProvider.generateToken(json, JWTOptions())
+  }
+
+  fun isTokenExpired(created: Long): Boolean {
+    return getCurrentUTCMillis() - created > EXPIRATION_MILLIS
+  }
+
+  private fun getCurrentUTCMillis(): Long {
+    val now = LocalDateTime.now(ZoneOffset.UTC)
+    return now.atZone(ZoneOffset.UTC)?.toInstant()?.toEpochMilli()!!
+  }
 
   override fun createAuthHandlers(roles: Roles): RouteHandlers =
     listOf(
@@ -39,10 +57,6 @@ class JwtAuthHelper(
         }
       }
     )
-
-  fun generateToken(json: JsonObject): String {
-    return authProvider.generateToken(json, JWTOptions())
-  }
 
   fun authenticateUserRoles(
     requiredRoles: Roles,

@@ -1,22 +1,28 @@
 package dev.fuelyour.tools
 
 import dev.fuelyour.annotations.Body
+import dev.fuelyour.annotations.Timeout
 import dev.fuelyour.exceptions.HTTPStatusCode
 import dev.fuelyour.exceptions.ResponseCodeException
-import io.reactivex.Single
+import dev.fuelyour.exceptions.TimeoutException
 import io.swagger.v3.oas.models.Operation
 import io.swagger.v3.oas.models.parameters.Parameter
 import io.vertx.core.Handler
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.core.shareddata.impl.ClusterSerializable
-import io.vertx.reactivex.ext.web.RoutingContext
+import io.vertx.ext.web.RoutingContext
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 import org.koin.core.KoinComponent
 import java.lang.reflect.InvocationTargetException
 import kotlin.Exception
 import kotlin.reflect.KCallable
 import kotlin.reflect.KClass
 import kotlin.reflect.KParameter
+import kotlin.reflect.full.callSuspendBy
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.instanceParameter
 import kotlin.reflect.full.isSubclassOf
@@ -35,20 +41,35 @@ class SwaggerServiceHandler(
     return listOf(
       object : Handler<RoutingContext> {
         override fun handle(context: RoutingContext) {
-          method.callWithParams(controller, context, op.parameters)
+          GlobalScope.launch {
+            try {
+              val timeout = method.findAnnotation<Timeout>()?.length ?: 30000
+              withTimeout(timeout) {
+                method.callWithParams(controller, context, op.parameters)
+              }
+            } catch (ex: TimeoutCancellationException) {
+              replyWithError(context, TimeoutException(
+                "Timed out waiting for response",
+                JsonArray(opId),
+                ex
+              ))
+            } catch (ex: Exception) {
+              replyWithError(context, ex)
+            }
+          }
         }
       }
     )
   }
 
-  private fun KCallable<*>.callWithParams(
+  suspend private fun KCallable<*>.callWithParams(
     instance: Any?,
     context: RoutingContext,
     swaggerParams: List<Parameter>?
   ) {
     try {
       val params: MutableMap<KParameter, Any?> = mutableMapOf()
-      inejctInstanceParam(params, instance)
+      injectInstanceParam(params, instance)
       parameters.forEach {param ->
         if (param.isSubclassOf(RoutingContext::class)) {
           params[param] = context
@@ -59,7 +80,7 @@ class SwaggerServiceHandler(
         }
 
       }
-      handleResponse(context, this.callBy(params))
+      handleResponse(context, this.callSuspendBy(params))
     } catch (e: Exception) {
       if (e is InvocationTargetException) {
         val ex = e.targetException
@@ -72,7 +93,7 @@ class SwaggerServiceHandler(
     }
   }
 
-  private fun KCallable<*>.inejctInstanceParam(
+  private fun KCallable<*>.injectInstanceParam(
     params: MutableMap<KParameter, Any?>,
     instance: Any?
   ) {
@@ -141,17 +162,15 @@ class SwaggerServiceHandler(
 
   private fun handleResponse(context: RoutingContext, response: Any?) {
     when (response) {
-      is Single<*> -> {
-        response.subscribe({ onComplete ->
-          handleResponse(context, onComplete)
-        }, { error -> replyWithError(context, error) })
-      }
       is ClusterSerializable -> {
         context.response().putHeader("content-type", "application/json")
         context.response().end(response.encode())
       }
       !is Unit -> {
         context.response().end(response.toString())
+      }
+      else -> {
+        context.response().end()
       }
     }
   }

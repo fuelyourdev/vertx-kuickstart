@@ -6,34 +6,18 @@ import io.swagger.v3.oas.models.PathItem
 import io.swagger.v3.parser.ResolverCache
 import io.vertx.core.Handler
 import io.vertx.core.http.HttpMethod
+import io.vertx.ext.web.Route
+import io.vertx.ext.web.Router
+import io.vertx.ext.web.RoutingContext
 import io.vertx.ext.web.api.contract.openapi3.impl.OpenAPI3RequestValidationHandlerImpl
-import io.vertx.reactivex.ext.web.Route
-import io.vertx.reactivex.ext.web.Router
-import io.vertx.reactivex.ext.web.RoutingContext
-import io.vertx.reactivex.ext.web.api.contract.openapi3.OpenAPI3RequestValidationHandler
-import io.vertx.reactivex.ext.web.handler.BodyHandler
-import io.vertx.reactivex.ext.web.handler.TimeoutHandler
-import org.koin.core.KoinComponent
-import org.koin.core.inject
+import io.vertx.ext.web.handler.BodyHandler
+import io.vertx.ext.web.handler.TimeoutHandler
 
 typealias Roles = Map<String, List<String>>
 typealias RouteHandlers = List<Handler<RoutingContext>>
 
 interface SwaggerAuthHandler {
   fun createAuthHandlers(roles: Roles): RouteHandlers
-}
-
-fun Router.route(swaggerFile: OpenAPI) {
-  SwaggerRouterSingleton.route(this, swaggerFile)
-}
-
-private object SwaggerRouterSingleton : KoinComponent {
-
-  private val impl: SwaggerRouter by inject()
-
-  fun route(router: Router, swaggerFile: OpenAPI) {
-    impl.route(router, swaggerFile)
-  }
 }
 
 class SwaggerRouter(
@@ -82,13 +66,12 @@ class SwaggerRouter(
     swaggerFile: OpenAPI,
     swaggerCache: ResolverCache
   ) {
-    val impl = OpenAPI3RequestValidationHandlerImpl(
+    handler(OpenAPI3RequestValidationHandlerImpl(
       op,
       op.parameters,
       swaggerFile,
       swaggerCache
-    )
-    handler(OpenAPI3RequestValidationHandler(impl))
+    ))
   }
 
   private fun Route.handleServiceCall(op: Operation, opId: String) {

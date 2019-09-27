@@ -1,17 +1,20 @@
 package dev.fuelyour.verticles
 
 import dev.fuelyour.tools.SwaggerMerger
-import dev.fuelyour.tools.route
-import io.reactivex.Completable
+import dev.fuelyour.tools.SwaggerRouter
+import io.swagger.v3.oas.models.OpenAPI
 import io.vertx.core.http.HttpServerOptions
-import io.vertx.reactivex.core.AbstractVerticle
-import io.vertx.reactivex.ext.web.Router
-import io.vertx.reactivex.ext.web.handler.StaticHandler
+import io.vertx.ext.web.Router
+import io.vertx.ext.web.handler.StaticHandler
+import io.vertx.kotlin.coroutines.CoroutineVerticle
 import org.koin.core.KoinComponent
+import org.koin.core.inject
 
-class HttpVerticle : AbstractVerticle(), KoinComponent {
+class HttpVerticle : CoroutineVerticle(), KoinComponent {
 
-  override fun rxStart(): Completable {
+  private val swaggerRouter: SwaggerRouter by inject()
+
+  override suspend fun start() {
     val mainRouter = Router.router(vertx)
     mountApiRoutes(mainRouter)
     mountStaticRoutes(mainRouter)
@@ -38,11 +41,14 @@ class HttpVerticle : AbstractVerticle(), KoinComponent {
     )
   }
 
-  private fun startupHttpServer(mainRouter: Router?): Completable {
-    return vertx
+  private fun startupHttpServer(mainRouter: Router) {
+    vertx
       .createHttpServer(HttpServerOptions().setCompressionSupported(true))
       .requestHandler(mainRouter)
-      .rxListen(config().getInteger("http.port", 8080))
-      .ignoreElement()
+      .listen(config.getInteger("http.port", 8080))
+  }
+
+  fun Router.route(swaggerFile: OpenAPI) {
+    swaggerRouter.route(this, swaggerFile)
   }
 }

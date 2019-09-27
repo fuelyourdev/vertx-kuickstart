@@ -1,93 +1,66 @@
 package dev.fuelyour.repositories
 
-import io.reactivex.Observable
+import dev.fuelyour.exceptions.ModelNotFoundException
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
-import io.vertx.kotlin.core.json.json
-import io.vertx.kotlin.core.json.obj
-import io.vertx.reactivex.pgclient.PgPool
-import io.vertx.reactivex.sqlclient.Row
-import io.vertx.reactivex.sqlclient.Tuple
+import io.vertx.kotlin.sqlclient.preparedQueryAwait
+import io.vertx.sqlclient.Row
+import io.vertx.sqlclient.RowSet
+import io.vertx.sqlclient.SqlClient
+import io.vertx.sqlclient.Tuple
 
 
-abstract class Repository(val pool: PgPool, val table: String) {
+abstract class Repository(val table: String, val schema: String) {
 
-  fun all() =
-    pool.rxBegin().flatMap { connection ->
-      connection.rxPrepare("select * from $table")
-        .flatMapObservable { preparedQuery ->
-          val rowStream = preparedQuery.createStream(50, Tuple.tuple())
-          rowStream.toObservable();
-        }.map {
-          jsonRow(it)
-        }.toJsonArray()
-    }
+  val tableName = "$schema.$table"
 
-  fun find(id: String) =
-    pool.rxPreparedQuery(
-      "select * from $table where id = $1",
-      Tuple.of(id)
-    ).flatMapObservable {
-      Observable.fromIterable(it.asIterable())
-    }.map {
-      jsonRow(it)
-    }.singleOrError()
-
-  fun findBy(query: String, params: Tuple) =
-    pool.rxPreparedQuery(query, params).flatMapObservable {
-      Observable.fromIterable(it.asIterable())
-    }.map {
-      jsonRow(it)
-    }.singleOrError()
-
-  fun delete(id: String) =
-    pool.rxPreparedQuery(
-      "delete from $table where id = $1",
-      Tuple.of(id)
-    ).flatMapObservable {
-      Observable.fromIterable(it.asIterable())
-    }.map {
-      jsonRow(it)
-    }.singleOrError()
-
-  fun where(query: String, params: Tuple) =
-    pool.rxBegin().flatMap { connection ->
-      connection.rxPrepare(query)
-        .flatMapObservable { preparedQuery ->
-          val rowStream = preparedQuery.createStream(50, params)
-          rowStream.toObservable();
-        }.map {
-          jsonRow(it)
-        }.toJsonArray()
-    }
-
-  private fun jsonRow(row: Row): JsonObject {
-    return buildOutJsonRow(row, json { obj() }, 0)
+  suspend fun all(connection: SqlClient): JsonArray {
+    return connection.preparedQueryAwait("SELECT * FROM $tableName").getRows()
   }
 
-  private fun buildOutJsonRow(
-    dbRow: Row,
-    currentJson: JsonObject,
-    currentColumn: Int
-  ): JsonObject {
-    return when (dbRow.size()) {
-      currentColumn -> currentJson
-      else -> {
-        val columnName = dbRow.getColumnName(currentColumn)
-        val dbRowValue = dbRow.getValue(columnName)
-        val newJsonRow: JsonObject = if (columnName == "data") {
-          val dataJsonString = dbRow.getString("data")
-          val json = JsonObject(dataJsonString)
-          json.copy().map.putAll(currentJson.map)
-          json
-        } else {
-          currentJson.put(columnName, dbRowValue)
-        }
-        buildOutJsonRow(dbRow, newJsonRow, currentColumn + 1)
-      }
-    }
+  suspend fun find(id: String, connection: SqlClient): JsonObject {
+    val result = connection.preparedQueryAwait("SELECT * FROM $tableName WHERE id = $1", Tuple.of(id)).getRow()
+    if (result.isEmpty)
+      throw ModelNotFoundException("No object found with ID", JsonArray(id))
+    return result
   }
 
-  private fun <T> Observable<T>.toJsonArray() =
-    toList().map { JsonArray(it) }
+  suspend fun insert(data: JsonObject, connection: SqlClient): JsonObject {
+    val query = "INSERT INTO $tableName (data) VALUES ($1::jsonb) RETURNING *"
+    return connection.preparedQueryAwait(query, Tuple.of(data)).getRow()
+  }
+
+  suspend fun update(id: String, data: JsonObject, connection: SqlClient): JsonObject {
+    val query = "UPDATE $tableName SET data = $1 WHERE id = $2 RETURNING *"
+    return connection.preparedQueryAwait(query, Tuple.of(data, id)).getRow()
+  }
+
+  suspend fun delete(id: String, connection: SqlClient): JsonObject {
+    val query = "DELETE FROM $tableName WHERE id = $1 RETURNING id"
+    val deleted = connection.preparedQueryAwait(query, Tuple.of(id)).getRow()
+    if (deleted.isEmpty)
+      throw ModelNotFoundException("Tried to delete an item that does not exist", JsonArray(id))
+    return deleted
+  }
+
+  private fun RowSet.getRow(): JsonObject {
+    return this.map { row -> jsonRow(row, this.columnsNames()) }.firstOrNull() ?: JsonObject()
+  }
+
+  private fun RowSet.getRows(): JsonArray {
+    return JsonArray(this.map { row -> jsonRow(row, this.columnsNames()) })
+  }
+
+  private fun jsonRow(row: Row, columnNames: List<String>): JsonObject {
+    val json = if (columnNames.contains("data"))
+      row.getValue("data") as JsonObject
+    else
+      JsonObject()
+
+    columnNames.forEachIndexed { i, s ->
+      if (s != "data")
+        json.put(s, row.getValue(i))
+    }
+    return json
+  }
 }
