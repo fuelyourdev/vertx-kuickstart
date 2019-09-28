@@ -24,7 +24,6 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KParameter
 import kotlin.reflect.full.callSuspendBy
 import kotlin.reflect.full.findAnnotation
-import kotlin.reflect.full.instanceParameter
 import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.jvm.jvmErasure
 
@@ -69,13 +68,14 @@ class SwaggerServiceHandler(
   ) {
     try {
       val params: MutableMap<KParameter, Any?> = mutableMapOf()
-      injectInstanceParam(params, instance)
       parameters.forEach {param ->
-        if (param.isSubclassOf(RoutingContext::class)) {
+        if (param.kind == KParameter.Kind.INSTANCE) {
+          params[param] = instance
+        } else if (param.isSubclassOf(RoutingContext::class)) {
           params[param] = context
         } else if (param.findAnnotation<Body>() != null) {
           params[param] = injectBody(param, context)
-        } else if (param.kind != KParameter.Kind.INSTANCE) {
+        } else {
           params[param] = injectParams(param, context, swaggerParams)
         }
 
@@ -91,13 +91,6 @@ class SwaggerServiceHandler(
         throw e
       }
     }
-  }
-
-  private fun KCallable<*>.injectInstanceParam(
-    params: MutableMap<KParameter, Any?>,
-    instance: Any?
-  ) {
-    this.instanceParameter?.let { params.put(it, instance) }
   }
 
   private fun injectBody(

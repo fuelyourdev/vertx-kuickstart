@@ -3,7 +3,6 @@ package dev.fuelyour.controllers
 import dev.fuelyour.annotations.Body
 import dev.fuelyour.repositories.InventoryRepo
 import dev.fuelyour.tools.DatabaseAccess
-import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.core.shareddata.impl.ClusterSerializable
 
