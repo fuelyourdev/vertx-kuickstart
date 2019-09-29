@@ -14,7 +14,6 @@ import org.koin.core.module.Module
 import org.koin.core.qualifier.named
 import org.koin.dsl.bind
 import org.koin.dsl.module
-import org.koin.experimental.builder.single
 
 fun main() {
   start()
@@ -32,11 +31,12 @@ fun start(overrideModule: Module? = null) {
     single {
       JwtAuthHelper(get(named("config")), get())
     } bind SwaggerAuthHandler::class
-    single { SwaggerServiceHandler(get(named("controllerPackage")))}
-    single<SwaggerTraverser>()
-    single<SwaggerRouter>()
-    single<InventoryController>()
-    single<DirectoryController>()
+    single { ControllerSupplier(get(named("controllerPackage")))}
+    single { SwaggerServiceHandler(get()) }
+    single { SwaggerTraverser() }
+    single { SwaggerRouter(get(), get(), get()) }
+    single { InventoryController(get(), get()) }
+    single { DirectoryController(get()) }
     single { DatabaseAccess(get(named("config")), get())}
     single { InventoryRepo(get(named("schema"))) }
   }

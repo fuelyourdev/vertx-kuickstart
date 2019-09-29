@@ -50,7 +50,6 @@ dependencies {
   implementation("org.flywaydb:flyway-core:6.0.0")
   implementation("postgresql:postgresql:9.1-901-1.jdbc4")
   implementation("org.koin:koin-core:2.0.1")
-  implementation("org.koin:koin-core-ext:2.0.1")
 
   implementation("org.reflections:reflections:0.9.11")
   implementation("org.slf4j:slf4j-jdk14:1.7.28")
