@@ -271,11 +271,8 @@ class SwaggerServiceHandler(
         is Long -> arr.add(item)
         is String -> arr.add(item)
         is List<*> -> arr.add(serializeList(item))
-        else -> if (item == null) {
-          arr.add(null as Any?)
-        } else {
-          arr.add(serializeObject(item))
-        }
+        null -> arr.add(null as Any?)
+        else -> arr.add(serializeObject(item))
       }
     }
     return arr
