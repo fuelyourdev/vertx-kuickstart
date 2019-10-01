@@ -11,6 +11,7 @@ import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.core.shareddata.impl.ClusterSerializable
 import io.vertx.ext.web.RoutingContext
+import io.vertx.kotlin.core.json.jsonObjectOf
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.launch
@@ -23,13 +24,11 @@ import java.lang.reflect.WildcardType
 import kotlin.Exception
 import kotlin.reflect.KClass
 import kotlin.reflect.KParameter
-import kotlin.reflect.full.callSuspendBy
-import kotlin.reflect.full.findAnnotation
-import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.jvm.jvmErasure
 import java.time.Instant
 import kotlin.reflect.KFunction
-import kotlin.reflect.full.functions
+import kotlin.reflect.KProperty1
+import kotlin.reflect.full.*
 import kotlin.reflect.jvm.javaConstructor
 import kotlin.reflect.jvm.javaMethod
 
@@ -191,8 +190,7 @@ class SwaggerServiceHandler(
     return this?.let { type ->
       val actualTypeArgument = type.let {
         val parameterizedType = it as ParameterizedType
-        val typeArg = parameterizedType.actualTypeArguments[0]
-        when (typeArg) {
+        when (val typeArg = parameterizedType.actualTypeArguments[0]) {
           is WildcardType -> typeArg.upperBounds[0]
           else -> typeArg
         }
@@ -241,18 +239,69 @@ class SwaggerServiceHandler(
     )
 
   private fun handleResponse(context: RoutingContext, response: Any?) {
-    when (response) {
-      is ClusterSerializable -> {
-        context.response().putHeader("content-type", "application/json")
-        context.response().end(response.encode())
-      }
-      !is Unit -> {
-        context.response().end(response.toString())
-      }
-      else -> {
-        context.response().end()
+    if (response == Unit) {
+      context.response().end()
+    } else {
+      context.response().putHeader("content-type", "application/json")
+      if (response == null) {
+        context.response().end(jsonObjectOf("response" to null).encode())
+      } else when (response) {
+        is ClusterSerializable -> context.response().end(response.encode())
+        is List<*> -> context.response().end(serializeList(response).encode())
+        else -> if (response::class.isData) {
+          context.response().end(serializeObject(response).encode())
+        } else {
+          context.response()
+            .end(jsonObjectOf("response" to response.toString()).encode())
+        }
       }
     }
+  }
+
+  private fun serializeList(list: List<*>): JsonArray {
+    val arr = JsonArray()
+    list.forEach { item ->
+      when (item) {
+        is ByteArray -> arr.add(item)
+        is Boolean -> arr.add(item)
+        is Double -> arr.add(item)
+        is Float -> arr.add(item)
+        is Instant -> arr.add(item)
+        is Int -> arr.add(item)
+        is Long -> arr.add(item)
+        is String -> arr.add(item)
+        is List<*> -> arr.add(serializeList(item))
+        else -> if (item == null) {
+          arr.add(null as Any?)
+        } else {
+          arr.add(serializeObject(item))
+        }
+      }
+    }
+    return arr
+  }
+
+  @Suppress("UNCHECKED_CAST")
+  private fun <T: Any> serializeObject(obj: T): JsonObject {
+    val json = JsonObject()
+    obj::class.declaredMemberProperties.forEach { prop ->
+      val key = prop.name
+      when (val value = (prop as KProperty1<T, Any?>).get(obj)) {
+        is ByteArray -> json.put(key, value)
+        is Boolean -> json.put(key, value)
+        is Double -> json.put(key, value)
+        is Float -> json.put(key, value)
+        is Instant -> json.put(key, value)
+        is Int -> json.put(key, value)
+        is Long -> json.put(key, value)
+        is String -> json.put(key, value)
+        is List<*> -> json.put(key, serializeList(value))
+        else -> if (value != null) {
+          json.put(key, serializeObject(value))
+        }
+      }
+    }
+    return json
   }
 
   private fun replyWithError(context: RoutingContext, failure: Throwable) {

@@ -5,6 +5,9 @@ import dev.fuelyour.repositories.InventoryRepo
 import dev.fuelyour.tools.DatabaseAccess
 import io.vertx.core.json.JsonObject
 import io.vertx.core.shareddata.impl.ClusterSerializable
+import io.vertx.kotlin.core.json.jsonArrayOf
+import io.vertx.kotlin.core.json.jsonObjectOf
+
 data class ManufacturerPost(
   val name: String,
   val homePage: String? = null,
@@ -31,8 +34,8 @@ class InventoryController(
       da.getConnection { conn -> inventoryRepo.all(conn) }
   }
 
-  suspend fun post(body: InventoryPost): JsonObject {
-    return JsonObject()//da.getConnection { conn -> inventoryRepo.insert(body, conn) }
+  suspend fun post(body: InventoryPost): InventoryPost {
+    return body//da.getConnection { conn -> inventoryRepo.insert(body, conn) }
   }
 
   suspend fun patch(id: String, @Body body: JsonObject): JsonObject {
