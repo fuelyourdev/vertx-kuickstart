@@ -141,6 +141,8 @@ class SwaggerServiceHandler(
       JsonArray::class -> context.bodyAsJsonArray
       List::class -> getGenericParameterType(method, param.index)
         .instantiateList(context.bodyAsJsonArray)
+      Map::class -> getGenericParameterType(method, param.index)
+        .instantiateMap(context.bodyAsJson)
       else -> param.type.classifier.let { it as KClass<*> }.let { kclass ->
         when {
           kclass.isData -> kclass.instantiate(context.bodyAsJson)
@@ -165,6 +167,8 @@ class SwaggerServiceHandler(
           String::class -> json.getString(name)
           List::class -> getGenericParameterType(ctor, param.index)
             .instantiateList(json.getJsonArray(name))
+          Map::class -> getGenericParameterType(ctor, param.index)
+            .instantiateMap(json.getJsonObject(name))
           else -> kclass.instantiate(json.getJsonObject(name))
         }
       }
@@ -211,11 +215,55 @@ class SwaggerServiceHandler(
         List::class -> range.map {
           actualTypeArgument.instantiateList(arr.getJsonArray(it))
         }
+        Map::class -> range.map {
+          actualTypeArgument.instantiateMap(arr.getJsonObject(it))
+        }
         else -> range.map {
           itemsKClass.instantiate(arr.getJsonObject(it))
         }
       }
     } ?: range.map { arr.getValue(it) }
+  }
+
+  private fun Type?.instantiateMap(
+    obj: JsonObject
+  ): Map<String, Any?> {
+    return this?.let { type ->
+      val actualTypeArgument = type.let {
+        val parameterizedType = it as ParameterizedType
+        when (val typeArg = parameterizedType.actualTypeArguments[1]) {
+          is WildcardType -> typeArg.upperBounds[0]
+          else -> typeArg
+        }
+      }
+      val itemsKClass = when (actualTypeArgument) {
+        is ParameterizedType -> actualTypeArgument.rawType.typeName
+        else -> actualTypeArgument.typeName
+      }.let { Class.forName(it).kotlin }
+      val map = mutableMapOf<String, Any?>()
+      obj.forEach { (key, _) ->
+        when (itemsKClass) {
+          ByteArray::class -> map.put(key, obj.getBinary(key))
+          Boolean::class -> map.put(key, obj.getBoolean(key))
+          Double::class -> map.put(key, obj.getDouble(key))
+          Float::class -> map.put(key, obj.getFloat(key))
+          Instant::class -> map.put(key, obj.getInstant(key))
+          Int::class -> map.put(key, obj.getInteger(key))
+          Long::class -> map.put(key, obj.getLong(key))
+          String::class -> map.put(key, obj.getString(key))
+          List::class -> map.put(
+            key,
+            actualTypeArgument.instantiateList(obj.getJsonArray(key))
+          )
+          Map::class -> map.put(
+            key,
+            actualTypeArgument.instantiateMap(obj.getJsonObject(key))
+          )
+          else -> map.put(key, itemsKClass.instantiate(obj.getJsonObject(key)))
+        }
+      }
+      map
+    } ?: obj.map
   }
 
   private fun parseParam(param: KParameter, value: String): Any {
@@ -248,6 +296,7 @@ class SwaggerServiceHandler(
       } else when (response) {
         is ClusterSerializable -> context.response().end(response.encode())
         is List<*> -> context.response().end(serializeList(response).encode())
+        is Map<*, *> -> context.response().end(serializeMap(response).encode())
         else -> if (response::class.isData) {
           context.response().end(serializeObject(response).encode())
         } else {
@@ -271,6 +320,7 @@ class SwaggerServiceHandler(
         is Long -> arr.add(item)
         is String -> arr.add(item)
         is List<*> -> arr.add(serializeList(item))
+        is Map<*, *> -> arr.add(serializeMap(item))
         null -> arr.add(null as Any?)
         else -> arr.add(serializeObject(item))
       }
@@ -293,6 +343,30 @@ class SwaggerServiceHandler(
         is Long -> json.put(key, value)
         is String -> json.put(key, value)
         is List<*> -> json.put(key, serializeList(value))
+        is Map<*, *> -> json.put(key, serializeMap(value))
+        else -> if (value != null) {
+          json.put(key, serializeObject(value))
+        }
+      }
+    }
+    return json
+  }
+
+  private fun serializeMap(map: Map<*, *>): JsonObject {
+    val json = JsonObject()
+    map.forEach { (keyObj, value) ->
+      val key = keyObj.toString()
+      when (value) {
+        is ByteArray -> json.put(key, value)
+        is Boolean -> json.put(key, value)
+        is Double -> json.put(key, value)
+        is Float -> json.put(key, value)
+        is Instant -> json.put(key, value)
+        is Int -> json.put(key, value)
+        is Long -> json.put(key, value)
+        is String -> json.put(key, value)
+        is List<*> -> json.put(key, serializeList(value))
+        is Map<*, *> -> json.put(key, serializeMap(value))
         else -> if (value != null) {
           json.put(key, serializeObject(value))
         }
