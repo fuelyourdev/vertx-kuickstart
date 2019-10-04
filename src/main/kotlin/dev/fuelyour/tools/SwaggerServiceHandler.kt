@@ -143,6 +143,9 @@ class SwaggerServiceHandler(
         .instantiateList(context.bodyAsJsonArray)
       Map::class -> getGenericParameterType(method, param.index)
         .instantiateMap(context.bodyAsJson)
+      Field::class -> throw Exception(
+        "Field not allowed as a controller function param"
+      )
       else -> param.type.classifier.let { it as KClass<*> }.let { kclass ->
         when {
           kclass.isData -> kclass.instantiate(context.bodyAsJson)
@@ -165,6 +168,8 @@ class SwaggerServiceHandler(
           Int::class -> json.getInteger(name)
           Long::class -> json.getLong(name)
           String::class -> json.getString(name)
+          Field::class -> getGenericParameterType(ctor, param.index)
+            .instantiateField(json, name)
           List::class -> getGenericParameterType(ctor, param.index)
             .instantiateList(json.getJsonArray(name))
           Map::class -> getGenericParameterType(ctor, param.index)
@@ -212,6 +217,9 @@ class SwaggerServiceHandler(
         Int::class -> range.map { arr.getInteger(it) }
         Long::class -> range.map { arr.getLong(it) }
         String::class -> range.map { arr.getString(it) }
+        Field::class -> range.map {
+          actualTypeArgument.instantiateField(arr, it)
+        }
         List::class -> range.map {
           actualTypeArgument.instantiateList(arr.getJsonArray(it))
         }
@@ -223,6 +231,87 @@ class SwaggerServiceHandler(
         }
       }
     } ?: range.map { arr.getValue(it) }
+  }
+
+  private fun Type?.instantiateField(
+    arr: JsonArray,
+    pos: Int
+  ): Field<out Any?> {
+    return this?.let { type ->
+      val actualTypeArgument = type.let {
+        val parameterizedType = it as ParameterizedType
+        when (val typeArg = parameterizedType.actualTypeArguments[0]) {
+          is WildcardType -> typeArg.upperBounds[0]
+          else -> typeArg
+        }
+      }
+      val itemsKClass = when (actualTypeArgument) {
+        is ParameterizedType -> actualTypeArgument.rawType.typeName
+        else -> actualTypeArgument.typeName
+      }.let { Class.forName(it).kotlin }
+      when (itemsKClass) {
+        ByteArray::class -> Field(arr.getBinary(pos), true)
+        Boolean::class -> Field(arr.getBoolean(pos), true)
+        Double::class -> Field(arr.getDouble(pos), true)
+        Float::class -> Field(arr.getFloat(pos), true)
+        Instant::class -> Field(arr.getInstant(pos), true)
+        Int::class -> Field(arr.getInteger(pos), true)
+        Long::class -> Field(arr.getLong(pos), true)
+        String::class -> Field(arr.getString(pos), true)
+        Field::class -> throw Exception("Field of Field type not allowed")
+        List::class -> Field(
+          actualTypeArgument.instantiateList(arr.getJsonArray(pos)),
+          true
+        )
+        Map::class -> Field(
+          actualTypeArgument.instantiateMap(arr.getJsonObject(pos)),
+          true
+        )
+        else -> Field(itemsKClass.instantiate(arr.getJsonObject(pos)), true)
+      }
+    } ?: Field(arr.getValue(pos), true)
+  }
+
+  private fun Type?.instantiateField(
+    json: JsonObject,
+    key: String
+  ): Field<out Any?> {
+    return this?.let { type ->
+      val actualTypeArgument = type.let {
+        val parameterizedType = it as ParameterizedType
+        when (val typeArg = parameterizedType.actualTypeArguments[0]) {
+          is WildcardType -> typeArg.upperBounds[0]
+          else -> typeArg
+        }
+      }
+      val itemsKClass = when (actualTypeArgument) {
+        is ParameterizedType -> actualTypeArgument.rawType.typeName
+        else -> actualTypeArgument.typeName
+      }.let { Class.forName(it).kotlin }
+      when (itemsKClass) {
+        ByteArray::class -> Field(json.getBinary(key), json.containsKey(key))
+        Boolean::class -> Field(json.getBoolean(key), json.containsKey(key))
+        Double::class -> Field(json.getDouble(key), json.containsKey(key))
+        Float::class -> Field(json.getFloat(key), json.containsKey(key))
+        Instant::class -> Field(json.getInstant(key), json.containsKey(key))
+        Int::class -> Field(json.getInteger(key), json.containsKey(key))
+        Long::class -> Field(json.getLong(key), json.containsKey(key))
+        String::class -> Field(json.getString(key), json.containsKey(key))
+        Field::class -> throw Exception("Field of Field type not allowed")
+        List::class -> Field(
+          actualTypeArgument.instantiateList(json.getJsonArray(key)),
+          json.containsKey(key)
+        )
+        Map::class -> Field(
+          actualTypeArgument.instantiateMap(json.getJsonObject(key)),
+          json.containsKey(key)
+        )
+        else -> Field(
+          itemsKClass.instantiate(json.getJsonObject(key)),
+          json.containsKey(key)
+        )
+      }
+    } ?: Field(json.getValue(key), json.containsKey(key))
   }
 
   private fun Type?.instantiateMap(
@@ -251,6 +340,10 @@ class SwaggerServiceHandler(
           Int::class -> map.put(key, obj.getInteger(key))
           Long::class -> map.put(key, obj.getLong(key))
           String::class -> map.put(key, obj.getString(key))
+          Field::class -> map.put(
+            key,
+            actualTypeArgument.instantiateField(obj, key)
+          )
           List::class -> map.put(
             key,
             actualTypeArgument.instantiateList(obj.getJsonArray(key))
@@ -321,6 +414,7 @@ class SwaggerServiceHandler(
         is String -> arr.add(item)
         is List<*> -> arr.add(serializeList(item))
         is Map<*, *> -> arr.add(serializeMap(item))
+        is Field<*> -> if (item.present) arr.add(item.value)
         null -> arr.add(null as Any?)
         else -> arr.add(serializeObject(item))
       }
@@ -344,6 +438,7 @@ class SwaggerServiceHandler(
         is String -> json.put(key, value)
         is List<*> -> json.put(key, serializeList(value))
         is Map<*, *> -> json.put(key, serializeMap(value))
+        is Field<*> -> if (value.present) json.put(key, value.value)
         else -> if (value != null) {
           json.put(key, serializeObject(value))
         }
@@ -367,6 +462,7 @@ class SwaggerServiceHandler(
         is String -> json.put(key, value)
         is List<*> -> json.put(key, serializeList(value))
         is Map<*, *> -> json.put(key, serializeMap(value))
+        is Field<*> -> if (value.present) json.put(key, value.value)
         else -> if (value != null) {
           json.put(key, serializeObject(value))
         }
@@ -401,3 +497,8 @@ class SwaggerServiceHandler(
     }
   }
 }
+
+data class Field<T>(
+  val value: T,
+  val present: Boolean
+)
