@@ -4,6 +4,7 @@ import com.google.common.reflect.TypeToken
 import dev.fuelyour.annotations.Body
 import dev.fuelyour.repositories.InventoryRepo
 import dev.fuelyour.tools.DatabaseAccess
+import dev.fuelyour.tools.type
 import io.vertx.core.json.JsonObject
 import io.vertx.core.shareddata.impl.ClusterSerializable
 import io.vertx.kotlin.core.json.jsonArrayOf
@@ -56,11 +57,3 @@ class InventoryController(
     da.getConnection { conn -> inventoryRepo.delete(id, conn) }
   }
 }
-
-private inline fun <reified T> type(): Type {
-  return object: TypeWrapper<T>() {}::class.java
-    .let { it.genericSuperclass as ParameterizedType }
-    .actualTypeArguments[0]
-}
-
-open class TypeWrapper<T>

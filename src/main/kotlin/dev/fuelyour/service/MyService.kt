@@ -32,13 +32,15 @@ fun start(overrideModule: Module? = null) {
       JwtAuthHelper(get(named("config")), get())
     } bind SwaggerAuthHandler::class
     single { ControllerSupplier(get(named("controllerPackage")))}
-    single { SwaggerServiceHandler(get()) }
+    single { SwaggerServiceHandler(get(), get(), get()) }
     single { SwaggerTraverser() }
     single { SwaggerRouter(get(), get(), get()) }
     single { InventoryController(get(), get()) }
     single { DirectoryController(get()) }
     single { DatabaseAccess(get(named("config")), get())}
     single { InventoryRepo(get(named("schema"))) }
+    single<Serializer> { SerializerImpl() }
+    single<Deserializer> { DeserializerImpl() }
   }
   startKoin {
     modules(module)
