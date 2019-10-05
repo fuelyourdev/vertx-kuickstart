@@ -1,17 +1,9 @@
 package dev.fuelyour.controllers
 
-import com.google.common.reflect.TypeToken
-import dev.fuelyour.annotations.Body
 import dev.fuelyour.repositories.InventoryRepo
 import dev.fuelyour.tools.DatabaseAccess
-import dev.fuelyour.tools.type
 import io.vertx.core.json.JsonObject
 import io.vertx.core.shareddata.impl.ClusterSerializable
-import io.vertx.kotlin.core.json.jsonArrayOf
-import io.vertx.kotlin.core.json.jsonObjectOf
-import java.lang.reflect.Method
-import java.lang.reflect.ParameterizedType
-import java.lang.reflect.Type
 
 data class ManufacturerPost(
   val name: String,
@@ -40,11 +32,10 @@ class InventoryController(
   }
 
   suspend fun post(body: InventoryPost): InventoryPost {
-    val mytype = type<List<Map<String, InventoryPost>>>()
     return body//da.getConnection { conn -> inventoryRepo.insert(body, conn) }
   }
 
-  suspend fun patch(id: String, @Body body: JsonObject): JsonObject {
+  suspend fun patch(id: String, body: JsonObject): JsonObject {
     return da.getTransaction { conn ->
       val fromDb = inventoryRepo.find(id, conn)
       fromDb.mergeIn(body)
