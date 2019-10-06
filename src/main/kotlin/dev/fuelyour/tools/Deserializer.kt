@@ -15,7 +15,7 @@ import kotlin.reflect.jvm.jvmErasure
 
 interface Deserializer {
   fun KFunction<*>.getTypeForParam(param: KParameter): Type?
-  fun KClass<*>.instantiate(json: JsonObject): Any
+  fun <T: Any> KClass<T>.instantiate(json: JsonObject): T
   fun Type?.instantiateList(arr: JsonArray): List<Any?>
   fun Type?.instantiateMap(obj: JsonObject): Map<String, Any?>
 }
@@ -33,7 +33,7 @@ class DeserializerImpl: Deserializer {
     }
   }
 
-  override fun KClass<*>.instantiate(json: JsonObject): Any {
+  override fun <T: Any> KClass<T>.instantiate(json: JsonObject): T {
     val ctor = constructors.first()
     val params = ctor.parameters.map { param ->
       param.name?.let { name ->

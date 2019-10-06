@@ -8,59 +8,170 @@ import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.RowSet
 import io.vertx.sqlclient.SqlClient
 import io.vertx.sqlclient.Tuple
+import kotlin.reflect.KClass
 
+import dev.fuelyour.tools.Deserializer
+import dev.fuelyour.tools.DeserializerImpl
+import dev.fuelyour.tools.Serializer
+import dev.fuelyour.tools.SerializerImpl
 
-abstract class Repository(val table: String, val schema: String) {
-
-  val tableName = "$schema.$table"
-
-  suspend fun all(connection: SqlClient): JsonArray {
-    return connection.preparedQueryAwait("SELECT * FROM $tableName").getRows()
+interface AllQuery<T: Any> {
+  companion object {
+    inline fun <reified T: Any> impl(
+      schema: String, table: String
+    ): AllQuery<T> =
+      AllQueryImpl(schema, table, T::class, DeserializerImpl())
   }
+  suspend fun all(connection: SqlClient): List<T>
+}
 
-  suspend fun find(id: String, connection: SqlClient): JsonObject {
-    val result = connection.preparedQueryAwait("SELECT * FROM $tableName WHERE id = $1", Tuple.of(id)).getRow()
-    if (result.isEmpty)
-      throw ModelNotFoundException("No object found with ID", JsonArray(id))
-    return result
-  }
+class AllQueryImpl<T: Any>(
+  schema: String,
+  table: String,
+  private val kclass: KClass<T>,
+  deserializer: Deserializer
+): AllQuery<T>, Deserializer by deserializer {
 
-  suspend fun insert(data: JsonObject, connection: SqlClient): JsonObject {
-    val query = "INSERT INTO $tableName (data) VALUES ($1::jsonb) RETURNING *"
-    return connection.preparedQueryAwait(query, Tuple.of(data)).getRow()
-  }
+  private val tableName = "$schema.$table"
 
-  suspend fun update(id: String, data: JsonObject, connection: SqlClient): JsonObject {
-    val query = "UPDATE $tableName SET data = $1 WHERE id = $2 RETURNING *"
-    return connection.preparedQueryAwait(query, Tuple.of(data, id)).getRow()
-  }
-
-  suspend fun delete(id: String, connection: SqlClient): JsonObject {
-    val query = "DELETE FROM $tableName WHERE id = $1 RETURNING id"
-    val deleted = connection.preparedQueryAwait(query, Tuple.of(id)).getRow()
-    if (deleted.isEmpty)
-      throw ModelNotFoundException("Tried to delete an item that does not exist", JsonArray(id))
-    return deleted
-  }
-
-  private fun RowSet.getRow(): JsonObject {
-    return this.map { row -> jsonRow(row, this.columnsNames()) }.firstOrNull() ?: JsonObject()
-  }
-
-  private fun RowSet.getRows(): JsonArray {
-    return JsonArray(this.map { row -> jsonRow(row, this.columnsNames()) })
-  }
-
-  private fun jsonRow(row: Row, columnNames: List<String>): JsonObject {
-    val json = if (columnNames.contains("data"))
-      row.getValue("data") as JsonObject
-    else
-      JsonObject()
-
-    columnNames.forEachIndexed { i, s ->
-      if (s != "data")
-        json.put(s, row.getValue(i))
-    }
-    return json
+  override suspend fun all(connection: SqlClient): List<T> {
+    return connection
+      .preparedQueryAwait("select * from $tableName")
+      .map { row ->
+        val json = row.getValue("data")
+          .let { it as JsonObject }
+          .put("id", row.getString("id"))
+        kclass.instantiate(json)
+      }
   }
 }
+
+interface FindQuery<T: Any> {
+  companion object {
+    inline fun <reified T: Any> impl(
+      schema: String, table: String
+    ): FindQuery<T> =
+      FindQueryImpl(schema, table, T::class, DeserializerImpl())
+  }
+  suspend fun find(id: String, connection: SqlClient): T
+}
+
+class FindQueryImpl<T: Any>(
+  schema: String,
+  table: String,
+  private val kclass: KClass<T>,
+  deserializer: Deserializer
+): FindQuery<T>, Deserializer by deserializer {
+
+  private val tableName = "$schema.$table"
+
+  override suspend fun find(id: String, connection: SqlClient): T {
+    return connection
+      .preparedQueryAwait(
+        "select * from $tableName where id = $1",
+        Tuple.of(id)
+      )
+      .map { row ->
+        val json = row.getValue("data")
+          .let { it as JsonObject }
+          .put("id", row.getString("id"))
+        kclass.instantiate(json)
+      }.firstOrNull()
+      ?: throw ModelNotFoundException("No object found with ID", JsonArray(id))
+  }
+}
+
+interface InsertQuery<T: Any, R: Any> {
+  companion object {
+    inline fun <T: Any, reified R: Any> impl(
+      schema: String, table: String
+    ): InsertQuery<T, R> =
+      InsertQueryImpl(schema, table, R::class, SerializerImpl(), DeserializerImpl())
+  }
+  suspend fun insert(toInsert: T, connection: SqlClient): R
+}
+
+class InsertQueryImpl<T: Any, R: Any>(
+  schema: String,
+  table: String,
+  private val kclass: KClass<R>,
+  serializer: Serializer,
+  deserializer: Deserializer
+): InsertQuery<T, R>, Serializer by serializer, Deserializer by deserializer {
+
+  private val tableName = "$schema.$table"
+
+  override suspend fun insert(toInsert: T, connection: SqlClient): R {
+    val query = "insert into $tableName (data) values ($1::jsonb) returning *"
+    val data = with (toInsert.serialize()) { remove("id") }
+    return connection.preparedQueryAwait(query, Tuple.of(data))
+      .map { row ->
+        val json = row.getValue("data")
+          .let { it as JsonObject }
+          .put("id", row.getString("id"))
+        kclass.instantiate(json)
+      }.first()
+  }
+}
+
+interface UpdateQuery<T: Any, R: Any> {
+  companion object {
+    inline fun <T: Any, reified R: Any> impl(
+      schema: String, table: String
+    ): UpdateQuery<T, R> =
+      UpdateQueryImpl(schema, table, R::class, SerializerImpl(), DeserializerImpl())
+  }
+  suspend fun update(id: String, toUpdate: T, connection: SqlClient): R
+}
+
+class UpdateQueryImpl<T: Any, R: Any>(
+  schema: String,
+  table: String,
+  private val kclass: KClass<R>,
+  serializer: Serializer,
+  deserializer: Deserializer
+): UpdateQuery<T, R>, Serializer by serializer, Deserializer by deserializer {
+
+  private val tableName = "$schema.$table"
+
+  override suspend fun update(
+    id: String,
+    toUpdate: T,
+    connection: SqlClient
+  ): R {
+    val query = "update $tableName set data = $1 where id = $2 returning *"
+    val data = with (toUpdate.serialize()) { remove("id") }
+    return connection.preparedQueryAwait(query, Tuple.of(data, id))
+      .map { row ->
+        val json = row.getValue("data")
+          .let { it as JsonObject }
+          .put("id", row.getString("id"))
+        kclass.instantiate(json)
+      }.first()
+  }
+}
+
+interface DeleteQuery {
+  companion object {
+    fun impl(schema: String, table: String): DeleteQuery =
+      DeleteQueryImpl(schema, table)
+  }
+  suspend fun delete(id: String, connection: SqlClient): String
+}
+
+class DeleteQueryImpl(schema: String, table: String): DeleteQuery {
+
+  private val tableName = "$schema.$table"
+
+  override suspend fun delete(id: String, connection: SqlClient): String {
+    val query = "delete from $tableName where id = $1 returning id"
+    return connection.preparedQueryAwait(query, Tuple.of(id))
+      .map { row -> row.getString("id") }
+      .firstOrNull()
+      ?: throw ModelNotFoundException(
+        "Tried to delete an item that does not exist",
+        JsonArray(id)
+      )
+  }
+}
+
