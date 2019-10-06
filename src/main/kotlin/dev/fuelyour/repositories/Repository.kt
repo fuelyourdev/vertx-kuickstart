@@ -4,8 +4,6 @@ import dev.fuelyour.exceptions.ModelNotFoundException
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.sqlclient.preparedQueryAwait
-import io.vertx.sqlclient.Row
-import io.vertx.sqlclient.RowSet
 import io.vertx.sqlclient.SqlClient
 import io.vertx.sqlclient.Tuple
 import kotlin.reflect.KClass

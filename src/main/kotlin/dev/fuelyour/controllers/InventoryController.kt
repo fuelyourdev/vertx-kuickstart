@@ -3,13 +3,12 @@ package dev.fuelyour.controllers
 import dev.fuelyour.repositories.InventoryRepo
 import dev.fuelyour.tools.DatabaseAccess
 import dev.fuelyour.tools.Field
-import io.vertx.core.json.JsonObject
-import io.vertx.core.shareddata.impl.ClusterSerializable
+import dev.fuelyour.tools.applyPatch
 
 data class ManufacturerPost(
   val name: String,
-  val homePage: String? = null,
-  val phone: String? = null
+  val homePage: String?,
+  val phone: String?
 )
 
 data class InventoryPost(
@@ -37,8 +36,8 @@ data class InventoryPatch(
 data class Manufacturer(
   val id: String,
   val name: String,
-  val homePage: String? = null,
-  val phone: String? = null
+  val homePage: String?,
+  val phone: String?
 )
 
 data class Inventory(
@@ -62,24 +61,19 @@ class InventoryController(
     return da.getConnection { conn -> inventoryRepo.all(conn) }
   }
 
-  suspend fun post(body: InventoryPost): Inventory {
-    return da.getConnection { conn -> inventoryRepo.insert(body, conn) }
+  suspend fun post(inventory: InventoryPost): Inventory {
+    return da.getConnection { conn -> inventoryRepo.insert(inventory, conn) }
   }
 
-  suspend fun patch(id: String, body: InventoryPatch): Inventory {
+  suspend fun patch(id: String, patch: InventoryPatch): Inventory {
     return da.getTransaction { conn ->
       val fromDb = inventoryRepo.find(id, conn)
-      //fromDb.mergeIn(body)
-      //body.forEach { (key, value) -> if (value == null) fromDb.remove(key) }
-      inventoryRepo.update(id, fromDb, conn)
+      val result = fromDb.applyPatch(patch)
+      inventoryRepo.update(id, result, conn)
     }
   }
 
   suspend fun delete(id: String) {
     da.getConnection { conn -> inventoryRepo.delete(id, conn) }
   }
-}
-
-fun Any.applyPatch(patch: Any) {
-
 }

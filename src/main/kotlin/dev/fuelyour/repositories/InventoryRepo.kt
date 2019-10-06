@@ -3,9 +3,11 @@ package dev.fuelyour.repositories
 import dev.fuelyour.controllers.Inventory
 import dev.fuelyour.controllers.InventoryPost
 
+private const val table = "inventories"
+
 class InventoryRepo(schema: String):
-    AllQuery<Inventory> by AllQuery.impl(schema, "inventories"),
-    FindQuery<Inventory> by FindQuery.impl(schema, "inventories"),
-    InsertQuery<InventoryPost, Inventory> by InsertQuery.impl(schema, "inventories"),
-    UpdateQuery<Inventory, Inventory> by UpdateQuery.impl(schema, "inventories"),
-    DeleteQuery by DeleteQuery.impl(schema, "inventories")
+    AllQuery<Inventory> by AllQuery.impl(schema, table),
+    FindQuery<Inventory> by FindQuery.impl(schema, table),
+    InsertQuery<InventoryPost, Inventory> by InsertQuery.impl(schema, table),
+    UpdateQuery<Inventory, Inventory> by UpdateQuery.impl(schema, table),
+    DeleteQuery by DeleteQuery.impl(schema, table)
