@@ -40,7 +40,7 @@ class AllQueryImpl<T: Any>(
           .let { it as JsonObject }
           .put("id", row.getString("id"))
         kclass.instantiate(json)
-      }
+      }.requireNoNulls()
   }
 }
 
@@ -101,14 +101,14 @@ class InsertQueryImpl<T: Any, R: Any>(
 
   override suspend fun insert(toInsert: T, connection: SqlClient): R {
     val query = "insert into $tableName (data) values ($1::jsonb) returning *"
-    val data = with (toInsert.serialize()) { remove("id") }
+    val data = toInsert.serialize().also { it.remove("id") }
     return connection.preparedQueryAwait(query, Tuple.of(data))
       .map { row ->
         val json = row.getValue("data")
           .let { it as JsonObject }
           .put("id", row.getString("id"))
         kclass.instantiate(json)
-      }.first()
+      }.requireNoNulls().first()
   }
 }
 
@@ -138,14 +138,14 @@ class UpdateQueryImpl<T: Any, R: Any>(
     connection: SqlClient
   ): R {
     val query = "update $tableName set data = $1 where id = $2 returning *"
-    val data = with (toUpdate.serialize()) { remove("id") }
+    val data = toUpdate.serialize().also { it.remove("id") }
     return connection.preparedQueryAwait(query, Tuple.of(data, id))
       .map { row ->
         val json = row.getValue("data")
           .let { it as JsonObject }
           .put("id", row.getString("id"))
         kclass.instantiate(json)
-      }.first()
+      }.requireNoNulls().first()
   }
 }
 

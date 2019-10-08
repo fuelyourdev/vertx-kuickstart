@@ -20,10 +20,8 @@ tags:
 paths:
   /inventory/{id}:
     get:
-      tags:
-        - developers
       summary: searches inventory
-      operationId: InventoryController.get.id
+      operationId: InventoryController.get
       description: Get an inventory item by ID
       parameters:
         - in: path
@@ -37,33 +35,77 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/InventoryItem'
+                $ref: '#/components/schemas/InventoryItem'
         '400':
           description: bad input parameter
+    delete:
+      summary: delete inventory item
+      operationId: InventoryController.delete
+      description: Delete an inventory item by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: search results matching criteria
+        '400':
+          description: bad input parameter
+    patch:
+      summary: adds an inventory item
+      operationId: InventoryController.patch
+      description: Update inventory item
+      responses:
+        '200':
+          description: item updated
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: updates to inventory item
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: Widget Adapter
+                releaseDate:
+                  type: string
+                  example: '2016-08-29'
+                manufacturer:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      example: ACME Corporation
+                    homePage:
+                      type: string
+                      format: url
+                      example: 'https://www.acme-corp.com'
+                    phone:
+                      type: string
+                      example: 408-867-5309
+                  required:
+                    - name
+                count:
+                  type: integer
+                  minimum: 0
+                  maximum: 50
+                  example: 1
   /inventory:
     get:
       tags:
         - developers
       summary: searches inventory
-      operationId: InventoryController.get
+      operationId: InventoryController.getAll
       description: Search for all inventory items
-      parameters:
-        - in: query
-          name: searchString
-          description: pass an optional search string for looking up inventory
-          required: false
-          schema:
-            type: string
-        - in: query
-          name: limit
-          description: maximum number of records to return
-          schema:
-            type: integer
-            format: int32
-            minimum: 0
-            maximum: 50
       responses:
         '200':
           description: search results matching criteria
@@ -76,14 +118,9 @@ paths:
         '400':
           description: bad input parameter
     post:
-      tags:
-        - admins
       summary: adds an inventory item
       operationId: InventoryController.post
       description: Adds an item to the system
-      x-auth-roles:
-        anyOf:
-          - ADMIN
       responses:
         '200':
           description: item created
@@ -92,29 +129,42 @@ paths:
         '409':
           description: an existing item already exists
       requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/InventoryItem'
         description: Inventory item to add
-  /login:
-    post:
-      tags:
-        - developers
-      summary: authenticas a user
-      operationId: DirectoryController.post
-      description: Authenticates a user and returns a JWT token
-      responses:
-        '200':
-          description: user authenticated
-        '401':
-          description: user unauthorized
-      requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LoginCredentials'
-        description: User credentials to authenticate
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: Widget Adapter
+                releaseDate:
+                  type: string
+                  example: '2016-08-29'
+                manufacturer:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      example: ACME Corporation
+                    homePage:
+                      type: string
+                      format: url
+                      example: 'https://www.acme-corp.com'
+                    phone:
+                      type: string
+                      example: 408-867-5309
+                  required:
+                    - name
+                count:
+                  type: integer
+                  minimum: 0
+                  maximum: 50
+                  example: 1
+              required:
+                - name
+                - manufacturer
+                - releaseDate
 components:
   schemas:
     InventoryItem:

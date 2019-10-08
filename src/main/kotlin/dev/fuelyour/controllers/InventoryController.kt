@@ -12,11 +12,10 @@ data class ManufacturerPost(
 )
 
 data class InventoryPost(
-  val id: String,
   val name: String,
   val releaseDate: String,
-  val manufacturer: ManufacturerPost,
-  val count: Int
+  val manufacturer: Manufacturer,
+  val count: Int?
 )
 
 data class ManufacturerPatch(
@@ -26,15 +25,13 @@ data class ManufacturerPatch(
 )
 
 data class InventoryPatch(
-  val id: Field<String?>,
   val name: Field<String?>,
   val releaseDate: Field<String?>,
-  val manufacturer: Field<ManufacturerPatch?>,
+  val manufacturer: Field<Manufacturer?>,
   val count: Field<Int?>
 )
 
 data class Manufacturer(
-  val id: String,
   val name: String,
   val homePage: String?,
   val phone: String?
@@ -45,7 +42,7 @@ data class Inventory(
   val name: String,
   val releaseDate: String,
   val manufacturer: Manufacturer,
-  val count: Int
+  val count: Int?
 )
 
 class InventoryController(
