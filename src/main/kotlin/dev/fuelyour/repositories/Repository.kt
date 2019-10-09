@@ -84,7 +84,13 @@ interface InsertQuery<T: Any, R: Any> {
     inline fun <T: Any, reified R: Any> impl(
       schema: String, table: String
     ): InsertQuery<T, R> =
-      InsertQueryImpl(schema, table, R::class, SerializerImpl(), DeserializerImpl())
+      InsertQueryImpl(
+        schema,
+        table,
+        R::class,
+        SerializerImpl(),
+        DeserializerImpl()
+      )
   }
   suspend fun insert(toInsert: T, connection: SqlClient): R
 }
@@ -117,7 +123,13 @@ interface UpdateQuery<T: Any, R: Any> {
     inline fun <T: Any, reified R: Any> impl(
       schema: String, table: String
     ): UpdateQuery<T, R> =
-      UpdateQueryImpl(schema, table, R::class, SerializerImpl(), DeserializerImpl())
+      UpdateQueryImpl(
+        schema,
+        table,
+        R::class,
+        SerializerImpl(),
+        DeserializerImpl()
+      )
   }
   suspend fun update(id: String, toUpdate: T, connection: SqlClient): R
 }
