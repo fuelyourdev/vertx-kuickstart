@@ -1,7 +1,8 @@
 package dev.fuelyour.repositories
 
-import dev.fuelyour.controllers.Inventory
-import dev.fuelyour.controllers.InventoryPost
+import dev.fuelyour.models.Inventory
+import dev.fuelyour.models.InventoryPost
+
 
 private const val table = "inventories"
 

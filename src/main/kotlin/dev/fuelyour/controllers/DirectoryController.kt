@@ -1,26 +1,22 @@
 package dev.fuelyour.controllers
 
 import dev.fuelyour.exceptions.AuthorizationException
-import dev.fuelyour.models.User
+import dev.fuelyour.models.JwtData
+import dev.fuelyour.models.Login
+import dev.fuelyour.models.UserRole
 import dev.fuelyour.tools.JwtAuthHelper
-import io.vertx.kotlin.core.json.array
-import io.vertx.kotlin.core.json.json
-import io.vertx.kotlin.core.json.obj
-
-data class Login(
-  val username: String,
-  val password: String
-)
+import dev.fuelyour.tools.Serializer
 
 class DirectoryController(
-  private val jwtAuthHelper: JwtAuthHelper
-) {
+  private val jwtAuthHelper: JwtAuthHelper,
+  private val serializer: Serializer
+): Serializer by serializer {
 
   fun post(body: Login): String = with(body) {
     if (username == "bob" && password == "secret") {
-      return jwtAuthHelper.generateToken(json {
-        obj("roles" to array(User.Role.ADMIN))
-      })
+      return jwtAuthHelper.generateToken(JwtData(
+        roles = listOf(UserRole.ADMIN)
+      ).serialize())
     } else {
       throw AuthorizationException()
     }

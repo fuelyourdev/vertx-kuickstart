@@ -1,6 +1,6 @@
 package dev.fuelyour.controllers
 
-import dev.fuelyour.config.Config
+import dev.fuelyour.config.config
 import dev.fuelyour.repositories.InventoryRepo
 import dev.fuelyour.tools.DatabaseAccess
 import dev.fuelyour.tools.JwtAuthHelper
@@ -16,7 +16,7 @@ import org.spekframework.spek2.lifecycle.CachingMode
 
 fun Root.setup() {
   val vertx by memoized { Vertx.vertx() }
-  val config = Config.config(vertx)
+  val config = vertx.config()
   val webClient by memoized { WebClient.create(vertx) }
   val deployIds by memoized(mode = CachingMode.EACH_GROUP, factory = { mutableListOf<String>() } )
 

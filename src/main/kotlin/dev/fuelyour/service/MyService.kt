@@ -1,6 +1,6 @@
 package dev.fuelyour.service
 
-import dev.fuelyour.config.Config
+import dev.fuelyour.config.config
 import dev.fuelyour.controllers.DirectoryController
 import dev.fuelyour.controllers.InventoryController
 import dev.fuelyour.repositories.InventoryRepo
@@ -21,7 +21,7 @@ fun main() {
 
 fun start(overrideModule: Module? = null) {
   val vertx = Vertx.vertx()
-  val config = Config.config(vertx)
+  val config = vertx.config()
 
   val module = module {
     single(named("controllerPackage")) { "dev.fuelyour.controllers" }
@@ -36,7 +36,7 @@ fun start(overrideModule: Module? = null) {
     single { SwaggerTraverser() }
     single { SwaggerRouter(get(), get(), get()) }
     single { InventoryController(get(), get()) }
-    single { DirectoryController(get()) }
+    single { DirectoryController(get(), get()) }
     single { DatabaseAccess(get(named("config")), get())}
     single { InventoryRepo(get(named("schema"))) }
     single<Serializer> { SerializerImpl() }

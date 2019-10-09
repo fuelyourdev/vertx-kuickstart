@@ -9,26 +9,23 @@ import io.vertx.kotlin.config.getConfigAwait
 import io.vertx.kotlin.core.json.jsonObjectOf
 import kotlinx.coroutines.runBlocking
 
-object Config {
-  private lateinit var retriever: ConfigRetriever
+private lateinit var retriever: ConfigRetriever
 
-  fun config(vertx: Vertx): JsonObject {
-    val retInitialized = this::retriever.isInitialized
-    return runBlocking {
-      if (!retInitialized) {
-        val fileStore = configStoreOptionsOf(
-          type = "file",
-          config = jsonObjectOf("path" to "config.json"))
-        val envStore = configStoreOptionsOf(type = "env")
-        retriever = ConfigRetriever.create(vertx, configRetrieverOptionsOf(
-          stores = listOf(fileStore, envStore)))
-      }
+fun Vertx.config(): JsonObject {
+  if (!::retriever.isInitialized) initRetriever()
 
-      val config = if (!retriever.cachedConfig.isEmpty)
-        retriever.cachedConfig
-      else
-        retriever.getConfigAwait()
-      config
-    }
+  return runBlocking {
+    if (retriever.cachedConfig.isEmpty) retriever.getConfigAwait()
+    else retriever.cachedConfig
   }
+}
+
+private fun Vertx.initRetriever() {
+  val fileConfig = jsonObjectOf("path" to "config.json")
+  val stores = listOf(
+    configStoreOptionsOf(type = "file", config = fileConfig),
+    configStoreOptionsOf(type = "env")
+  )
+  val options = configRetrieverOptionsOf(stores = stores)
+  retriever = ConfigRetriever.create(this, options)
 }

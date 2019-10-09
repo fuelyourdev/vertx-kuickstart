@@ -1,6 +1,6 @@
 package dev.fuelyour.migrations
 
-import dev.fuelyour.config.Config
+import dev.fuelyour.config.config
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import org.flywaydb.core.Flyway
@@ -8,7 +8,7 @@ import org.flywaydb.core.Flyway
 fun main() {
   // Create the Flyway instance and point it to the database
   val vertx = Vertx.vertx()
-  val dbConfig = Config.config(vertx)
+  val dbConfig = vertx.config()
   migrate(dbConfig)
   vertx.close()
 }

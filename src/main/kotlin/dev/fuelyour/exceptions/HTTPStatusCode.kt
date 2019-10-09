@@ -1,6 +1,6 @@
 package dev.fuelyour.exceptions
 
-enum class HTTPStatusCode(private val statusCode: Int) {
+enum class HTTPStatusCode(val value: Int) {
   OK(200),
   CREATED(201),
   ACCEPTED(202),
@@ -20,6 +20,4 @@ enum class HTTPStatusCode(private val statusCode: Int) {
   BAD_GATEWAY(502),
   UNAVAILABLE(503),
   GATEWAY_TIMEOUT(504);
-
-  fun value(): Int = statusCode
 }

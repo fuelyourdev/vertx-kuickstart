@@ -1,49 +1,11 @@
 package dev.fuelyour.controllers
 
+import dev.fuelyour.models.Inventory
+import dev.fuelyour.models.InventoryPatch
+import dev.fuelyour.models.InventoryPost
 import dev.fuelyour.repositories.InventoryRepo
 import dev.fuelyour.tools.DatabaseAccess
-import dev.fuelyour.tools.Field
 import dev.fuelyour.tools.applyPatch
-
-data class ManufacturerPost(
-  val name: String,
-  val homePage: String?,
-  val phone: String?
-)
-
-data class InventoryPost(
-  val name: String,
-  val releaseDate: String,
-  val manufacturer: Manufacturer,
-  val count: Int?
-)
-
-data class ManufacturerPatch(
-  val name: Field<String?>,
-  val homePage: Field<String?>,
-  val phone: Field<String?>
-)
-
-data class InventoryPatch(
-  val name: Field<String?>,
-  val releaseDate: Field<String?>,
-  val manufacturer: Field<Manufacturer?>,
-  val count: Field<Int?>
-)
-
-data class Manufacturer(
-  val name: String,
-  val homePage: String?,
-  val phone: String?
-)
-
-data class Inventory(
-  val id: String,
-  val name: String,
-  val releaseDate: String,
-  val manufacturer: Manufacturer,
-  val count: Int?
-)
 
 class InventoryController(
   private val da: DatabaseAccess,

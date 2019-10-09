@@ -197,11 +197,11 @@ class SwaggerServiceHandler(
       failure is ResponseCodeException -> {
         response.putHeader("content-type", "application/json")
         response
-          .setStatusCode(failure.statusCode.value())
+          .setStatusCode(failure.statusCode.value)
           .end(failure.asJson().encode())
       }
       context.statusCode() <= 0 -> response
-        .setStatusCode(HTTPStatusCode.INTERNAL_ERROR.value())
+        .setStatusCode(HTTPStatusCode.INTERNAL_ERROR.value)
         .end(failure.message ?: "")
       else -> response
         .setStatusCode(context.statusCode())
