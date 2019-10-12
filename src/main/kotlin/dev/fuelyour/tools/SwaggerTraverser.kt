@@ -63,8 +63,11 @@ class SwaggerRouteBuilder(
   var cache: ResolverCache? = null
 ) {
   fun build(): SwaggerRoute {
-    val throwException = { throw Exception("Can't build swagger route, " +
-        "not all fields have been provided.")}
+    val throwException = {
+      throw Exception(
+        "Can't build swagger route, not all fields have been provided."
+      )
+    }
     val verb = this.verb ?: throwException()
     val path = this.path ?: throwException()
     val opId = this.opId ?: throwException()
