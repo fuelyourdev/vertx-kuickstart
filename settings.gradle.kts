@@ -1,2 +1,2 @@
-rootProject.name = "kvpr"
+rootProject.name = "vertx-kuickstart"
 

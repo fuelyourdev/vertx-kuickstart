@@ -2,7 +2,6 @@ openapi: 3.0.0
 # Added by API Auto Mocking Plugin
 servers:
   - description: SwaggerHub API Auto Mocking
-    url: https://virtserver.swaggerhub.com/colinchilds/kvpr/1.0.0
 info:
   description: This is a simple API
   version: "1.0.0"

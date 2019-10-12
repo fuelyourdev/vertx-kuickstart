@@ -28,7 +28,7 @@ repositories {
 
 
 
-group = "dev.fuelyour.kvpr"
+group = "dev.fuelyour.vertx-kuickstart"
 version = "1.0-SNAPSHOT"
 
 
@@ -76,7 +76,7 @@ tasks {
   }
 
   withType<ShadowJar> {
-    baseName = "kvpr"
+    baseName = "vertx-kuickstart"
     classifier = null
     version = null
   }
