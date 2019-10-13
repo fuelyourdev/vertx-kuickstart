@@ -12,8 +12,7 @@ buildscript {
 }
 
 plugins {
-  //    `build-scan`
-  kotlin("jvm") version "1.3.40"
+  kotlin("jvm") version "1.3.50"
   id("com.moowork.node") version "1.3.1"
   id("com.github.johnrengelman.shadow") version "5.1.0"
   id("com.palantir.docker") version "0.22.1"
@@ -26,15 +25,14 @@ repositories {
   jcenter()
 }
 
-
-
 group = "dev.fuelyour.vertx-kuickstart"
 version = "1.0-SNAPSHOT"
-
 
 val vertxVersion = "3.8.1"
 
 dependencies {
+  implementation(project(":vertx-kuickstart-core"))
+
   implementation(kotlin("stdlib"))
   implementation(kotlin("reflect"))
 
