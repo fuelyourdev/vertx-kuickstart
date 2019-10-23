@@ -31,10 +31,17 @@ fun start(overrideModule: Module? = null) {
     single {
       JwtAuthHelper(get(named("config")), get())
     } bind SwaggerAuthHandler::class
-    single { ControllerSupplier(get(named("controllerPackage")))}
-    single { SwaggerServiceHandler(get(), get(), get()) }
-    single { SwaggerTraverser() }
-    single { SwaggerRouter(get(), get(), get()) }
+    single<ControllerSupplier> {
+      object: ControllerSupplier {
+        override fun getControllerInstance(controllerName: String): Any {
+          val controllerPackage = get<String>(named("controllerPackage"))
+          val kclass = Class.forName("$controllerPackage.$controllerName")
+            .kotlin
+          return get(kclass, null, null)
+        }
+      }
+    }
+    single { SwaggerRouter.build(get(), get(), get(), get()) }
     single { InventoryController(get(), get()) }
     single { DirectoryController(get(), get()) }
     single { DatabaseAccess(get(named("config")), get())}
