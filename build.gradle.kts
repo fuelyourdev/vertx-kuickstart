@@ -53,18 +53,14 @@ dependencies {
   implementation("org.slf4j:slf4j-jdk14:1.7.28")
   implementation("io.vertx:vertx-web-client:$vertxVersion")
 
-  testImplementation("org.spekframework.spek2:spek-dsl-jvm:2.0.7")
-  testRuntimeOnly("org.spekframework.spek2:spek-runner-junit5:2.0.7")
-  testImplementation("org.amshove.kluent:kluent:1.54")
   implementation("org.apache.commons:commons-collections4:4.0")
 
+  testImplementation("io.kotlintest:kotlintest-runner-junit5:3.3.2")
 }
 
 tasks {
   test {
-    useJUnitPlatform {
-      includeEngines("spek2")
-    }
+    useJUnitPlatform { }
   }
   compileKotlin {
     kotlinOptions.jvmTarget = "1.8"
