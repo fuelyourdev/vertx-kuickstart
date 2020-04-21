@@ -1,7 +1,7 @@
 package dev.fuelyour.verticles
 
-import dev.fuelyour.tools.SwaggerMerger
-import dev.fuelyour.tools.SwaggerRouter
+import dev.fuelyour.vertxkuickstartcore.tools.SwaggerMerger
+import dev.fuelyour.vertxkuickstartcore.tools.SwaggerRouter
 import io.swagger.v3.oas.models.OpenAPI
 import io.vertx.core.http.HttpServerOptions
 import io.vertx.ext.web.Router

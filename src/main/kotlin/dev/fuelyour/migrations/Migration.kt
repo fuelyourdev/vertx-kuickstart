@@ -1,7 +1,8 @@
 package dev.fuelyour.migrations
 
-import dev.fuelyour.config.config
+import dev.fuelyour.vertxkuickstartcore.config.config
 import io.vertx.core.Vertx
+import dev.fuelyour.vertxkuickstartcore.migrations.migrate
 
 fun main() {
   // Create the Flyway instance and point it to the database

@@ -1,6 +1,6 @@
 package dev.fuelyour.models
 
-import dev.fuelyour.tools.Field
+import dev.fuelyour.vertxkuickstartcore.tools.Field
 
 data class ManufacturerPost(
   val name: String,

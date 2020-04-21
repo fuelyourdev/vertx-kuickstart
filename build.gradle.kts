@@ -1,37 +1,30 @@
-import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import com.moowork.gradle.node.npm.NpmTask
 
 application {
   mainClassName = "dev.fuelyour.service.MyServiceKt"
 }
 
-buildscript {
-  dependencies {
-    classpath("com.github.jengelman.gradle.plugins:shadow:5.1.0")
-  }
-}
-
 plugins {
   kotlin("jvm") version "1.3.50"
   id("com.moowork.node") version "1.3.1"
-  id("com.github.johnrengelman.shadow") version "5.1.0"
   id("com.palantir.docker") version "0.22.1"
   id("com.palantir.docker-run") version "0.22.1"
   application
 }
 
 repositories {
+  mavenLocal()
   mavenCentral()
   jcenter()
 }
 
-group = "dev.fuelyour.vertx-kuickstart"
+group = "dev.fuelyour"
 version = "1.0-SNAPSHOT"
 
 val vertxVersion = "3.8.1"
 
 dependencies {
-  implementation(project(":vertx-kuickstart-core"))
+  implementation("dev.fuelyour:vertx-kuickstart-core:0.0.2")
 
   implementation(kotlin("stdlib"))
   implementation(kotlin("reflect"))
@@ -67,12 +60,6 @@ tasks {
   }
   compileTestKotlin {
     kotlinOptions.jvmTarget = "11"
-  }
-
-  withType<ShadowJar> {
-    baseName = "vertx-kuickstart"
-    classifier = null
-    version = null
   }
 }
 

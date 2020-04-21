@@ -4,8 +4,8 @@ import dev.fuelyour.models.Inventory
 import dev.fuelyour.models.InventoryPatch
 import dev.fuelyour.models.InventoryPost
 import dev.fuelyour.repositories.InventoryRepo
-import dev.fuelyour.tools.DatabaseAccess
-import dev.fuelyour.tools.applyPatch
+import dev.fuelyour.vertxkuickstartcore.tools.DatabaseAccess
+import dev.fuelyour.vertxkuickstartcore.tools.applyPatch
 
 class InventoryController(
   private val da: DatabaseAccess,

@@ -1,10 +1,10 @@
 package dev.fuelyour.service
 
-import dev.fuelyour.config.config
+import dev.fuelyour.vertxkuickstartcore.config.config
 import dev.fuelyour.controllers.DirectoryController
 import dev.fuelyour.controllers.InventoryController
 import dev.fuelyour.repositories.InventoryRepo
-import dev.fuelyour.tools.*
+import dev.fuelyour.vertxkuickstartcore.tools.*
 import dev.fuelyour.verticles.HttpVerticle
 import io.vertx.core.Vertx
 import io.vertx.kotlin.core.deployVerticleAwait

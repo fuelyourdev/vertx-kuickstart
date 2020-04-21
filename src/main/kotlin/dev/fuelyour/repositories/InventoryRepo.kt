@@ -2,6 +2,7 @@ package dev.fuelyour.repositories
 
 import dev.fuelyour.models.Inventory
 import dev.fuelyour.models.InventoryPost
+import dev.fuelyour.vertxkuickstartcore.repositories.*
 
 
 private const val table = "inventories"

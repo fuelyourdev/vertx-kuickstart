@@ -1,11 +1,11 @@
 package dev.fuelyour.controllers
 
-import dev.fuelyour.exceptions.AuthorizationException
+import dev.fuelyour.vertxkuickstartcore.exceptions.AuthorizationException
 import dev.fuelyour.models.JwtData
 import dev.fuelyour.models.Login
 import dev.fuelyour.models.UserRole
-import dev.fuelyour.tools.JwtAuthHelper
-import dev.fuelyour.tools.Serializer
+import dev.fuelyour.vertxkuickstartcore.tools.JwtAuthHelper
+import dev.fuelyour.vertxkuickstartcore.tools.Serializer
 
 class DirectoryController(
   private val jwtAuthHelper: JwtAuthHelper,
