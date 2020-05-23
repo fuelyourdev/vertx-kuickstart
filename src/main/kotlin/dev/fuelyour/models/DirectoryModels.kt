@@ -1,10 +1,10 @@
 package dev.fuelyour.models
 
 data class Login(
-  val username: String,
-  val password: String
+    val username: String,
+    val password: String
 )
 
 data class JwtData(
-  val roles: List<UserRole>
+    val roles: List<UserRole>
 )

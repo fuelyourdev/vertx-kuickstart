@@ -12,43 +12,43 @@ import org.koin.core.inject
 
 class HttpVerticle : CoroutineVerticle(), KoinComponent {
 
-  private val swaggerRouter: SwaggerRouter by inject()
+    private val swaggerRouter: SwaggerRouter by inject()
 
-  override suspend fun start() {
-    val mainRouter = Router.router(vertx)
-    mountApiRoutes(mainRouter)
-    mountStaticRoutes(mainRouter)
-    return startupHttpServer(mainRouter)
-  }
+    override suspend fun start() {
+        val mainRouter = Router.router(vertx)
+        mountApiRoutes(mainRouter)
+        mountStaticRoutes(mainRouter)
+        return startupHttpServer(mainRouter)
+    }
 
-  private fun mountApiRoutes(mainRouter: Router) {
-    val apiRouter = Router.router(vertx)
-    setRoutesFromSwagger(apiRouter)
-    mainRouter.mountSubRouter("/api", apiRouter)
-  }
+    private fun mountApiRoutes(mainRouter: Router) {
+        val apiRouter = Router.router(vertx)
+        setRoutesFromSwagger(apiRouter)
+        mainRouter.mountSubRouter("/api", apiRouter)
+    }
 
-  private fun setRoutesFromSwagger(apiRouter: Router) {
-    val swaggerFile = SwaggerMerger.mergeAllInDirectory("swagger")
-      ?: throw Exception("Unable to process Swagger file")
-    apiRouter.route(swaggerFile)
-  }
+    private fun setRoutesFromSwagger(apiRouter: Router) {
+        val swaggerFile = SwaggerMerger.mergeAllInDirectory("swagger")
+            ?: throw Exception("Unable to process Swagger file")
+        apiRouter.route(swaggerFile)
+    }
 
-  private fun mountStaticRoutes(mainRouter: Router) {
-    mainRouter.get().handler(
-      StaticHandler.create()
-        .setDirectoryListing(false)
-        .setIncludeHidden(false)
-    )
-  }
+    private fun mountStaticRoutes(mainRouter: Router) {
+        mainRouter.get().handler(
+            StaticHandler.create()
+                .setDirectoryListing(false)
+                .setIncludeHidden(false)
+        )
+    }
 
-  private fun startupHttpServer(mainRouter: Router) {
-    vertx
-      .createHttpServer(HttpServerOptions().setCompressionSupported(true))
-      .requestHandler(mainRouter)
-      .listen(config.getInteger("http.port", 8080))
-  }
+    private fun startupHttpServer(mainRouter: Router) {
+        vertx
+            .createHttpServer(HttpServerOptions().setCompressionSupported(true))
+            .requestHandler(mainRouter)
+            .listen(config.getInteger("http.port", 8080))
+    }
 
-  fun Router.route(swaggerFile: OpenAPI) {
-    swaggerRouter.route(this, swaggerFile)
-  }
+    fun Router.route(swaggerFile: OpenAPI) {
+        swaggerRouter.route(this, swaggerFile)
+    }
 }
